@@ -16,17 +16,18 @@ pt-stalk Usage
 
 Directory Structure
 -------------------
-bin/ <- Contains the master stalk2graph.rb and individual R files for each graph
+
+    bin/ <- Contains the master stalk2graph.rb and individual R files for each graph
 
 Environmental Setup
 -------------------
 
 ### On a mac :-D
 
-$ brew install gfortran
-$ brew install R # Note this may require additional dependencies depending on OS X version
+    $ brew install gfortran
+    $ brew install R # Note this may require additional dependencies depending on OS X version
 
-R> install.packages('ggplot2')
+    R> install.packages('ggplot2')
 
 TO DO
 =====
