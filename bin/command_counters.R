@@ -59,5 +59,6 @@ for (i in 1:length(cs)) {
                                              Value=as.numeric(crs[i])))
 }
 
-ggplot(command_counters_data, aes(x=Time, y=Value, fill=Command, color=Command, group=Command)) + geom_area(position = "stack", stat="identity")
+ggplot(command_counters_data, aes(x=Time, y=Value, fill=Command, color=Command, group=Command)) + geom_area(position = "stack", stat="identity") + ggtitle("MySQL Command Counters")
+
 
