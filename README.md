@@ -6,13 +6,13 @@ Convert the output of pt-stalk to graphs
 pt-stalk Usage
 --------------
 
-# Gotta have the latest version (2.1.2+)
-$ wget percona.com/get/pt-stalk
-
-# --run-time=1200 to get an hour of data. 
-# You can use any runtime, but graphs look 
-# really chunky with < 100 observations
-$ ./pt-stalk --no-stalk --run-time=1200
+    # Gotta have the latest version (2.1.2+)
+    $ wget percona.com/get/pt-stalk
+    
+    # --run-time=1200 to get an hour of data. 
+    # You can use any runtime, but graphs look 
+    # really chunky with < 100 observations
+    $ ./pt-stalk --no-stalk --run-time=1200
 
 Directory Structure
 -------------------
