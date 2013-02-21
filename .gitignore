@@ -1,0 +1,7 @@
+examples/
+tmp/
+*.RData
+*.Rout
+*.jpg
+*.csv
+
