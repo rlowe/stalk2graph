@@ -25,14 +25,19 @@ Environmental Setup
 ### On a mac :-D
 
     $ brew install gfortran
-    $ brew install R # Note this may require additional dependencies depending on OS X version
+    $ brew install R
+    $ sudo gem install json
 
     R> install.packages('ggplot2')
 
 TO DO
 =====
 
+* Ordering is important for graph line addition.  Update each R script
+  to always explicitly graph the one with max() first.  See
+  innodb_buffer_pool.R for prior art.
 * Each graph on http://www.percona.com/doc/percona-monitoring-plugins/cacti/mysql-templates.html
+* Figure out how to call the R scripts with a path?
 
 NOTES
 =====

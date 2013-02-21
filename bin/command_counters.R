@@ -1,17 +1,17 @@
 require(ggplot2)
 
-csv_data<-read.csv("scratch.csv")
+command_counters_data<-read.csv("command_counters.csv")
 
-cs<-diff(csv_data$select)
-cd<-diff(csv_data$delete)
-ci<-diff(csv_data$insert)
-cu<-diff(csv_data$update)
-cr<-diff(csv_data$replace)
-cl<-diff(csv_data$load)
-cdm<-diff(csv_data$delete_multi)
-cis<-diff(csv_data$insert_select)
-cum<-diff(csv_data$update_multi)
-crs<-diff(csv_data$replace_select)
+cs<-diff(command_counters_data$select)
+cd<-diff(command_counters_data$delete)
+ci<-diff(command_counters_data$insert)
+cu<-diff(command_counters_data$update)
+cr<-diff(command_counters_data$replace)
+cl<-diff(command_counters_data$load)
+cdm<-diff(command_counters_data$delete_multi)
+cis<-diff(command_counters_data$insert_select)
+cum<-diff(command_counters_data$update_multi)
+crs<-diff(command_counters_data$replace_select)
 
 command_counters_data<-data.frame(Time="", Command="", Value=as.numeric(""))
 command_counters_data<-command_counters_data[-1,]
@@ -59,6 +59,7 @@ for (i in 1:length(cs)) {
                                              Value=as.numeric(crs[i])))
 }
 
-ggplot(command_counters_data, aes(x=Time, y=Value, fill=Command, color=Command, group=Command)) + geom_area(position = "stack", stat="identity") + ggtitle("MySQL Command Counters")
-
+jpeg('command_counters.jpg')
+ggplot(command_counters_data, aes(x=Time, y=Value, fill=Command, color=Command, group=Command, xaxt='n')) + geom_area(position = "stack", stat="identity") + ggtitle("MySQL Command Counters")
+dev.off()
 

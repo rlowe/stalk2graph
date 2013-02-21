@@ -25,10 +25,6 @@ def usage
   Location of pt-stalk output files.
   DEFAULT: /var/lib/pt-stalk
 
--g, --graph-def:
-  Location of the JSON graph definition file
-  DEFAULT: graphs.json
-
 -h, --help:
   show help and exit
 
@@ -45,15 +41,11 @@ end
 opt             = Hash.new
 opt[:dest]      = File.expand_path(".")
 opt[:dir]       = "/var/lib/pt-stalk/"
-opt[:graph_def] = File.expand_path("./graphs.json")
 opt[:prefix]    = nil
-
-graph_defs      = nil
 
 opts = GetoptLong.new(
   [ '--dest',            GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--dir',       '-d', GetoptLong::OPTIONAL_ARGUMENT ],
-  [ '--graph-def', '-g', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--help',      '-h', GetoptLong::NO_ARGUMENT       ],
   [ '--prefix',    '-p', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--version',   '-v', GetoptLong::NO_ARGUMENT       ]
@@ -69,19 +61,7 @@ opts.each do |o, arg|
         usage
       end
     when '--dir'
-      if File.directory?(arg)
-        opt[:dir] = arg
-      else
-        puts "#{arg} is not a valid directory"
-        usage
-      end
-    when '--graph-def'
-      if File.exists?(arg)
-        opt[:graph_def] = arg
-      else
-        puts "#{arg} does not exist"
-        usage
-      end
+      opt[:dir] = arg
     when '--help'
       usage
     when '--prefix'
@@ -97,13 +77,17 @@ if opt[:prefix].nil?
   usage
 end
 
-if !File.exists?(opt[:graph_def])
-  puts "--graph-def option requires a valid JSON file"
+if !File.directory?(opt[:dir])
+  puts "#{opt[:dir]} is not a valid directory"
   usage
-else
-  graph_def_file = File.open(File.expand_path(opt[:graph_def]))
-  graph_json_data = graph_def_file.read
-  graph_defs = JSON.parse(graph_json_data)
+end
+
+opt[:dir] = File.expand_path(opt[:dir])
+
+# Check for at least a single pt-stalk file and assume the rest are there
+if !File.exists?(File.expand_path(opt[:dir], "#{opt[:prefix]}-df"))
+  puts "Invalid --dir or --prefix."
+  usage
 end
 
 # Although some may be unused, these are hashes for all of the default pt-stalk
@@ -140,6 +124,7 @@ variables      = {}
 vmstat         = {}
 vmstat_overall = {}
 
+puts "#{`date`} - Processing pt-stalk files..."
 
 ################################################################################
 # Output from SHOW GLOBAL STATUS
@@ -175,53 +160,264 @@ variables_file.each_line do |line|
   end
 end
 
-def generate_graphs_from_json(graph_def, dest)
-  # Check the target file doesn't exist
+puts "#{`date`} - Generating .csv files..."
 
-  iterations = 0
+################################################################################
+# Generate the data for the MySQL Command Counters Graph
+################################################################################
+File.open(File.expand_path("command_counters.csv", opt[:dest]), "w") do |f|
+  f.write "select,delete,insert,update,replace,load,delete_multi,"
+  f.write "insert_select,update_multi,replace_select\n"
 
-  graph_def["data"].each do |k,v|
-    puts mysqladmin[k]
-    print v["display"] + ","
-    if v["file"] == "mysqladmin"
-      if iterations == 0
-        iterations = mysqladmin[k].length
-      elsif iterations > mysqladmin[k].length
-        iterations = mysqladmin[k].length 
-      end
+  begin
+    for i in 1..(mysqladmin["Com_select"].length)
+      f.write mysqladmin["Com_select"][i] + ","
+      f.write mysqladmin["Com_delete"][i] + ","
+      f.write mysqladmin["Com_insert"][i] + ","
+      f.write mysqladmin["Com_update"][i] + ","
+      f.write mysqladmin["Com_replace"][i] + ","
+      f.write mysqladmin["Com_load"][i] + ","
+      f.write mysqladmin["Com_delete_multi"][i] + ","
+      f.write mysqladmin["Com_insert_select"][i] + ","
+      f.write mysqladmin["Com_update_multi"][i] + ","
+      f.write mysqladmin["Com_replace_select"][i] + "\n"
     end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
   end
-  puts ""
-
-  puts iterations
-
-  # Find the lowest common denominator for how many results (and report it)
-  # Cycle through that number and ..
-  #graph_def["data"].each do |k,v|
-
-  #end
 end
 
-# Generate a graph for each graph definition
-#graph_defs.each do |g|
-#  generate_graphs_from_json(g, opt[:dest])
-#end
+################################################################################
+# Generate the data for the MySQL Handlers Graph
+################################################################################
+File.open(File.expand_path("handlers.csv", opt[:dest]), "w") do |f|
+  f.write "write,update,delete,read_first,read_key,read_last,"
+  f.write "read_next,read_prev,read_rnd,read_rnd_next\n"
 
-puts "Select,Delete,Insert,Update,Replace,Load,Delete Multi,Insert Select,Update Multi,Replace Select"
-
-begin
-  for i in 1..(mysqladmin["Com_select"].length)
-    print mysqladmin["Com_select"][i] + ","
-    print mysqladmin["Com_delete"][i] + ","
-    print mysqladmin["Com_insert"][i] + ","
-    print mysqladmin["Com_update"][i] + ","
-    print mysqladmin["Com_replace"][i] + ","
-    print mysqladmin["Com_load"][i] + ","
-    print mysqladmin["Com_delete_multi"][i] + ","
-    print mysqladmin["Com_insert_select"][i] + ","
-    print mysqladmin["Com_update_multi"][i] + ","
-    puts  mysqladmin["Com_replace_select"][i]
+  begin
+    for i in 1..(mysqladmin["Handler_write"].length)
+      f.write mysqladmin["Handler_write"][i] + ","
+      f.write mysqladmin["Handler_update"][i] + ","
+      f.write mysqladmin["Handler_delete"][i] + ","
+      f.write mysqladmin["Handler_read_first"][i] + ","
+      f.write mysqladmin["Handler_read_key"][i] + ","
+      f.write mysqladmin["Handler_read_last"][i] + ","
+      f.write mysqladmin["Handler_read_next"][i] + ","
+      f.write mysqladmin["Handler_read_prev"][i] + ","
+      f.write mysqladmin["Handler_read_rnd"][i] + ","
+      f.write mysqladmin["Handler_read_rnd_next"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
   end
-rescue
-
 end
+
+################################################################################
+# Generate the data for the MySQL Select Types Graph
+################################################################################
+File.open(File.expand_path("select_types.csv", opt[:dest]), "w") do |f|
+  f.write "full_join,full_range_join,range,range_check,scan\n"
+
+  begin
+    for i in 1..(mysqladmin["Select_full_join"].length)
+      f.write mysqladmin["Select_full_join"][i] + ","
+      f.write mysqladmin["Select_full_range_join"][i] + ","
+      f.write mysqladmin["Select_range"][i] + ","
+      f.write mysqladmin["Select_range_check"][i] + ","
+      f.write mysqladmin["Select_scan"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
+  end
+end
+
+################################################################################
+# Generate the data for the MySQL Sorts Graph
+################################################################################
+File.open(File.expand_path("sorts.csv", opt[:dest]), "w") do |f|
+  f.write "merge_passes,range,rows,scan\n"
+
+  begin
+    for i in 1..(mysqladmin["Sort_scan"].length)
+      f.write mysqladmin["Sort_merge_passes"][i] + ","
+      f.write mysqladmin["Sort_range"][i] + ","
+      f.write mysqladmin["Sort_rows"][i] + ","
+      f.write mysqladmin["Sort_scan"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
+  end
+end
+
+################################################################################
+# Generate the data for the MySQL Transaction Handlers Graph
+################################################################################
+File.open(File.expand_path("transaction_handlers.csv", opt[:dest]), "w") do |f|
+  f.write "commit,rollback,savepoint,savepoint_rollback\n"
+
+  begin
+    for i in 1..(mysqladmin["Handler_savepoint_rollback"].length)
+      f.write mysqladmin["Handler_commit"][i] + ","
+      f.write mysqladmin["Handler_rollback"][i] + ","
+      f.write mysqladmin["Handler_savepoint"][i] + ","
+      f.write mysqladmin["Handler_savepoint_rollback"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
+  end
+end
+
+################################################################################
+# Generate the data for the MySQL InnoDB Adaptive Hash Searches Graph
+################################################################################
+File.open(File.expand_path("innodb_adaptive_hash_searches.csv", opt[:dest]), "w") do |f|
+  f.write "hash_searches,non_hash_searches\n"
+
+  begin
+    for i in 1..(mysqladmin["Innodb_adaptive_hash_hash_searches"].length)
+      f.write mysqladmin["Innodb_adaptive_hash_hash_searches"][i] + ","
+      f.write mysqladmin["Innodb_adaptive_hash_non_hash_searches"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
+  end
+end
+
+################################################################################
+# Generate the data for the InnoDB Buffer Pool Graph
+################################################################################
+File.open(File.expand_path("innodb_buffer_pool.csv", opt[:dest]), "w") do |f|
+  f.write "pool_size,database_pages,pages_free,modified_pages\n"
+
+  begin
+    for i in 1..(mysqladmin["Innodb_buffer_pool_pages_total"].length)
+      f.write mysqladmin["Innodb_buffer_pool_pages_total"][i] + ","
+      f.write mysqladmin["Innodb_buffer_pool_pages_data"][i] + ","
+      f.write mysqladmin["Innodb_buffer_pool_pages_free"][i] + ","
+      f.write mysqladmin["Innodb_buffer_pool_pages_dirty"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
+  end
+end
+
+################################################################################
+# Generate the data for the InnoDB Buffer Pool Activity Graph
+################################################################################
+File.open(File.expand_path("innodb_buffer_pool_activity.csv", opt[:dest]), "w") do |f|
+  f.write "pages_created,pages_read,pages_written\n"
+
+  begin
+    for i in 1..(mysqladmin["Innodb_pages_written"].length)
+      f.write mysqladmin["Innodb_pages_created"][i] + ","
+      f.write mysqladmin["Innodb_pages_read"][i] + ","
+      f.write mysqladmin["Innodb_pages_written"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
+  end
+end
+
+################################################################################
+# Generate the data for the InnoDB Checkpoint Graph
+################################################################################
+File.open(File.expand_path("innodb_checkpoint.csv", opt[:dest]), "w") do |f|
+  f.write "age,max_age,target_age\n"
+
+  begin
+    for i in 1..(mysqladmin["Innodb_checkpoint_age"].length)
+      f.write mysqladmin["Innodb_checkpoint_age"][i] + ","
+      f.write mysqladmin["Innodb_checkpoint_max_age"][i] + ","
+      f.write mysqladmin["Innodb_checkpoint_target_age"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
+  end
+end
+
+puts "#{`date`} - Generating graphs..."
+
+################################################################################
+# Go through each .R script and execute to make the graphs
+################################################################################
+
+`R CMD BATCH bin/command_counters.R`
+`R CMD BATCH bin/handlers.R`
+`R CMD BATCH bin/innodb_adaptive_hash_searches.R`
+`R CMD BATCH bin/innodb_buffer_pool.R`
+`R CMD BATCH bin/innodb_buffer_pool_activity.R`
+`R CMD BATCH bin/innodb_checkpoint.R`
+`R CMD BATCH bin/select_types.R`
+`R CMD BATCH bin/sorts.R`
+`R CMD BATCH bin/transaction_handlers.R`
+
+puts "#{`date`} - Cleaning up..."
+
+################################################################################
+# Clean up the .csv files
+################################################################################
+
+`rm #{File.expand_path("command_counters.csv", opt[:dest])}`
+`rm #{File.expand_path("handlers.csv", opt[:dest])}`
+`rm #{File.expand_path("innodb_adaptive_hash_searches.csv", opt[:dest])}`
+`rm #{File.expand_path("innodb_buffer_pool.csv", opt[:dest])}`
+`rm #{File.expand_path("innodb_buffer_pool_activity.csv", opt[:dest])}`
+`rm #{File.expand_path("innodb_checkpoint.csv", opt[:dest])}`
+`rm #{File.expand_path("select_types.csv", opt[:dest])}`
+`rm #{File.expand_path("sorts.csv", opt[:dest])}`
+`rm #{File.expand_path("transaction_handlers.csv", opt[:dest])}`
+
+################################################################################
+# Clean up the .Rout files
+################################################################################
+
+`rm #{File.expand_path("command_counters.Rout", opt[:dest])}`
+`rm #{File.expand_path("handlers.Rout", opt[:dest])}`
+`rm #{File.expand_path("innodb_adaptive_hash_searches.Rout", opt[:dest])}`
+`rm #{File.expand_path("innodb_buffer_pool.Rout", opt[:dest])}`
+`rm #{File.expand_path("innodb_buffer_pool_activity.Rout", opt[:dest])}`
+`rm #{File.expand_path("innodb_checkpoint.Rout", opt[:dest])}`
+`rm #{File.expand_path("select_types.Rout", opt[:dest])}`
+`rm #{File.expand_path("sorts.Rout", opt[:dest])}`
+`rm #{File.expand_path("transaction_handlers.Rout", opt[:dest])}`
+
+################################################################################
+# Create an .html page with all the graphs
+################################################################################
+
+puts "#{`date`} - Generating .html ..."
+
+
+puts "Complete: #{opt[:prefix]}.html was generated"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
