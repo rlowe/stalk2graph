@@ -38,6 +38,34 @@ TO DO
   innodb_buffer_pool.R for prior art.
 * Each graph on http://www.percona.com/doc/percona-monitoring-plugins/cacti/mysql-templates.html
 * Figure out how to call the R scripts with a path?
+* Handle missing files
+* For real handle different # of results
+* Clean up graph sizing
+
+InnoDB I/O Pending
+InnoDB Lock Structures
+InnoDB Log
+InnoDB Memory Allocation
+InnoDB Row Lock Time
+InnoDB Row Lock Waits
+InnoDB Row Operations
+InnoDB Semaphores
+InnoDB Tables In Use
+InnoDB Transactions
+InnoDB Active/Locked Transactions
+MyISAM Indexes
+MyISAM Key Cache
+MySQL Binary/Relay Logs
+Connections
+Files and Tables
+MySQL Network Traffic
+MySQL Processlist
+Query Cache
+Query Cache Memory
+Table Locks
+Temporary Objects
+-----
+http://www.percona.com/doc/percona-monitoring-plugins/cacti/unix-templates.html
 
 NOTES
 =====

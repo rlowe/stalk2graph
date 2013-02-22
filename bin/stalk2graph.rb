@@ -353,11 +353,52 @@ File.open(File.expand_path("innodb_checkpoint.csv", opt[:dest]), "w") do |f|
   end
 end
 
-puts "#{`date`} - Generating graphs..."
+################################################################################
+# Generate the data for the InnoDB Insert Buffer Graph
+################################################################################
+File.open(File.expand_path("innodb_insert_buffer.csv", opt[:dest]), "w") do |f|
+  f.write "free_list,merged_delete_marks,merged_deletes,merged_inserts,merges\n"
+
+  begin
+    for i in 1..(mysqladmin["Innodb_ibuf_merges"].length)
+      f.write mysqladmin["Innodb_ibuf_free_list"][i] + ","
+      f.write mysqladmin["Innodb_ibuf_merged_delete_marks"][i] + ","
+      f.write mysqladmin["Innodb_ibuf_merged_deletes"][i] + ","
+      f.write mysqladmin["Innodb_ibuf_merged_inserts"][i] + ","
+      f.write mysqladmin["Innodb_ibuf_merges"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
+  end
+end
+
+################################################################################
+# Generate the data for the InnoDB I/O Graph
+################################################################################
+File.open(File.expand_path("innodb_io.csv", opt[:dest]), "w") do |f|
+  f.write "file_reads,file_writes,log_writes,file_syncs\n"
+
+  begin
+    for i in 1..(mysqladmin["Innodb_data_fsyncs"].length)
+      f.write mysqladmin["Innodb_data_reads"][i] + ","
+      f.write mysqladmin["Innodb_data_writes"][i] + ","
+      f.write mysqladmin["Innodb_log_writes"][i] + ","
+      f.write mysqladmin["Innodb_data_fsyncs"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
+  end
+end
 
 ################################################################################
 # Go through each .R script and execute to make the graphs
 ################################################################################
+
+puts "#{`date`} - Generating graphs..."
 
 `R CMD BATCH bin/command_counters.R`
 `R CMD BATCH bin/handlers.R`
@@ -368,6 +409,8 @@ puts "#{`date`} - Generating graphs..."
 `R CMD BATCH bin/select_types.R`
 `R CMD BATCH bin/sorts.R`
 `R CMD BATCH bin/transaction_handlers.R`
+`R CMD BATCH bin/innodb_insert_buffer.R`
+`R CMD BATCH bin/innodb_io.R`
 
 puts "#{`date`} - Cleaning up..."
 
@@ -384,6 +427,8 @@ puts "#{`date`} - Cleaning up..."
 `rm #{File.expand_path("select_types.csv", opt[:dest])}`
 `rm #{File.expand_path("sorts.csv", opt[:dest])}`
 `rm #{File.expand_path("transaction_handlers.csv", opt[:dest])}`
+`rm #{File.expand_path("innodb_insert_buffer.csv", opt[:dest])}`
+`rm #{File.expand_path("innodb_io.csv", opt[:dest])}`
 
 ################################################################################
 # Clean up the .Rout files
@@ -398,13 +443,14 @@ puts "#{`date`} - Cleaning up..."
 `rm #{File.expand_path("select_types.Rout", opt[:dest])}`
 `rm #{File.expand_path("sorts.Rout", opt[:dest])}`
 `rm #{File.expand_path("transaction_handlers.Rout", opt[:dest])}`
+`rm #{File.expand_path("innodb_insert_buffer.Rout", opt[:dest])}`
+`rm #{File.expand_path("innodb_io.Rout", opt[:dest])}`
 
 ################################################################################
 # Create an .html page with all the graphs
 ################################################################################
 
 puts "#{`date`} - Generating .html ..."
-
 
 puts "Complete: #{opt[:prefix]}.html was generated"
 
