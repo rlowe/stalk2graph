@@ -400,59 +400,60 @@ end
 
 puts "#{`date`} - Generating graphs..."
 
-`R CMD BATCH bin/command_counters.R`
-`R CMD BATCH bin/handlers.R`
-`R CMD BATCH bin/innodb_adaptive_hash_searches.R`
-`R CMD BATCH bin/innodb_buffer_pool.R`
-`R CMD BATCH bin/innodb_buffer_pool_activity.R`
-`R CMD BATCH bin/innodb_checkpoint.R`
-`R CMD BATCH bin/select_types.R`
-`R CMD BATCH bin/sorts.R`
-`R CMD BATCH bin/transaction_handlers.R`
-`R CMD BATCH bin/innodb_insert_buffer.R`
-`R CMD BATCH bin/innodb_io.R`
-
-puts "#{`date`} - Cleaning up..."
+`Rscript /var/www/wordpress/stalk2graph/bin/command_counters.R #{File.expand_path("command_counters.csv", opt[:dest])} #{File.expand_path("command_counters.png", opt[:dest])}`
+`Rscript /var/www/wordpress/stalk2graph/bin/handlers.R #{File.expand_path("handlers.csv", opt[:dest])} #{File.expand_path("handlers.png", opt[:dest])}`
+`Rscript /var/www/wordpress/stalk2graph/bin/innodb_adaptive_hash_searches.R #{File.expand_path("innodb_adaptive_hash_searches.csv", opt[:dest])} #{File.expand_path("innodb_adaptive_hash_searches.png", opt[:dest])}`
+`Rscript /var/www/wordpress/stalk2graph/bin/innodb_buffer_pool.R #{File.expand_path("innodb_buffer_pool.csv", opt[:dest])} #{File.expand_path("innodb_buffer_pool.png", opt[:dest])}`
+`Rscript /var/www/wordpress/stalk2graph/bin/innodb_buffer_pool_activity.R #{File.expand_path("innodb_buffer_pool_activity.csv", opt[:dest])} #{File.expand_path("innodb_buffer_pool_activity.png", opt[:dest])}`
+`Rscript /var/www/wordpress/stalk2graph/bin/innodb_checkpoint.R #{File.expand_path("innodb_checkpoint.csv", opt[:dest])} #{File.expand_path("innodb_checkpoint.png", opt[:dest])}`
+`Rscript /var/www/wordpress/stalk2graph/bin/select_types.R #{File.expand_path("select_types.csv", opt[:dest])} #{File.expand_path("select_types.png", opt[:dest])}`
+`Rscript /var/www/wordpress/stalk2graph/bin/sorts.R #{File.expand_path("sorts.csv", opt[:dest])} #{File.expand_path("sorts.png", opt[:dest])}`
+`Rscript /var/www/wordpress/stalk2graph/bin/transaction_handlers.R #{File.expand_path("transaction_handlers.csv", opt[:dest])} #{File.expand_path("transaction_handlers.png", opt[:dest])}`
+`Rscript /var/www/wordpress/stalk2graph/bin/innodb_insert_buffer.R #{File.expand_path("innodb_insert_buffer.csv", opt[:dest])} #{File.expand_path("innodb_insert_buffer.png", opt[:dest])}`
+`Rscript /var/www/wordpress/stalk2graph/bin/innodb_io.R #{File.expand_path("innodb_io.csv", opt[:dest])} #{File.expand_path("innodb_io.png", opt[:dest])}`
 
 ################################################################################
 # Clean up the .csv files
 ################################################################################
 
-`rm #{File.expand_path("command_counters.csv", opt[:dest])}`
-`rm #{File.expand_path("handlers.csv", opt[:dest])}`
-`rm #{File.expand_path("innodb_adaptive_hash_searches.csv", opt[:dest])}`
-`rm #{File.expand_path("innodb_buffer_pool.csv", opt[:dest])}`
-`rm #{File.expand_path("innodb_buffer_pool_activity.csv", opt[:dest])}`
-`rm #{File.expand_path("innodb_checkpoint.csv", opt[:dest])}`
-`rm #{File.expand_path("select_types.csv", opt[:dest])}`
-`rm #{File.expand_path("sorts.csv", opt[:dest])}`
-`rm #{File.expand_path("transaction_handlers.csv", opt[:dest])}`
-`rm #{File.expand_path("innodb_insert_buffer.csv", opt[:dest])}`
-`rm #{File.expand_path("innodb_io.csv", opt[:dest])}`
+#`rm #{File.expand_path("command_counters.csv", opt[:dest])}`
+#`rm #{File.expand_path("handlers.csv", opt[:dest])}`
+#`rm #{File.expand_path("innodb_adaptive_hash_searches.csv", opt[:dest])}`
+#`rm #{File.expand_path("innodb_buffer_pool.csv", opt[:dest])}`
+#`rm #{File.expand_path("innodb_buffer_pool_activity.csv", opt[:dest])}`
+#`rm #{File.expand_path("innodb_checkpoint.csv", opt[:dest])}`
+#`rm #{File.expand_path("select_types.csv", opt[:dest])}`
+#`rm #{File.expand_path("sorts.csv", opt[:dest])}`
+#`rm #{File.expand_path("transaction_handlers.csv", opt[:dest])}`
+#`rm #{File.expand_path("innodb_insert_buffer.csv", opt[:dest])}`
+#`rm #{File.expand_path("innodb_io.csv", opt[:dest])}`
 
 ################################################################################
 # Clean up the .Rout files
 ################################################################################
 
-`rm #{File.expand_path("command_counters.Rout", opt[:dest])}`
-`rm #{File.expand_path("handlers.Rout", opt[:dest])}`
-`rm #{File.expand_path("innodb_adaptive_hash_searches.Rout", opt[:dest])}`
-`rm #{File.expand_path("innodb_buffer_pool.Rout", opt[:dest])}`
-`rm #{File.expand_path("innodb_buffer_pool_activity.Rout", opt[:dest])}`
-`rm #{File.expand_path("innodb_checkpoint.Rout", opt[:dest])}`
-`rm #{File.expand_path("select_types.Rout", opt[:dest])}`
-`rm #{File.expand_path("sorts.Rout", opt[:dest])}`
-`rm #{File.expand_path("transaction_handlers.Rout", opt[:dest])}`
-`rm #{File.expand_path("innodb_insert_buffer.Rout", opt[:dest])}`
-`rm #{File.expand_path("innodb_io.Rout", opt[:dest])}`
+#`rm #{File.expand_path("command_counters.Rout", opt[:dest])}`
+#`rm #{File.expand_path("handlers.Rout", opt[:dest])}`
+#`rm #{File.expand_path("innodb_adaptive_hash_searches.Rout", opt[:dest])}`
+#`rm #{File.expand_path("innodb_buffer_pool.Rout", opt[:dest])}`
+#`rm #{File.expand_path("innodb_buffer_pool_activity.Rout", opt[:dest])}`
+#`rm #{File.expand_path("innodb_checkpoint.Rout", opt[:dest])}`
+#`rm #{File.expand_path("select_types.Rout", opt[:dest])}`
+#`rm #{File.expand_path("sorts.Rout", opt[:dest])}`
+#`rm #{File.expand_path("transaction_handlers.Rout", opt[:dest])}`
+#`rm #{File.expand_path("innodb_insert_buffer.Rout", opt[:dest])}`
+#`rm #{File.expand_path("innodb_io.Rout", opt[:dest])}`
 
 ################################################################################
 # Create an .html page with all the graphs
 ################################################################################
+File.open(File.expand_path("#{opt[:prefix]}.html", opt[:dest]), "w") do |f|
+  f.write("<html><head></head><body>")
 
-puts "#{`date`} - Generating .html ..."
-
-puts "Complete: #{opt[:prefix]}.html was generated"
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/command_counters.png' />")
+  
+  f.write("</html>")
+end
 
 
 

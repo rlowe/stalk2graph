@@ -1,4 +1,5 @@
-i<-read.csv("innodb_buffer_pool.csv")
+args<-commandArgs(trailingOnly = FALSE)
+i<-read.csv(args[length(args)])
 
 # Convert this to GB
 i<-round((i*16)/1024/1024)

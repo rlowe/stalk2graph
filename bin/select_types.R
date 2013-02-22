@@ -1,6 +1,7 @@
+args<-commandArgs(trailingOnly = FALSE)
 require(ggplot2)
 
-select_types_data<-read.csv("select_types.csv")
+select_types_data<-read.csv(args[length(args)])
 
 sfj<-diff(select_types_data$full_join)
 sfrj<-diff(select_types_data$full_range_join)

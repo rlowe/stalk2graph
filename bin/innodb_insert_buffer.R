@@ -1,4 +1,5 @@
-i<-read.csv("innodb_insert_buffer.csv")
+args<-commandArgs(trailingOnly = FALSE)
+i<-read.csv(args[length(args)])
 
 jpeg('innodb_insert_buffer.jpg')
 options(scipen=20)

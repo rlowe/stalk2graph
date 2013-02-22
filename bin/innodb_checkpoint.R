@@ -1,4 +1,5 @@
-i<-read.csv("innodb_checkpoint.csv")
+args<-commandArgs(trailingOnly = FALSE)
+i<-read.csv(args[length(args)])
 
 ma<-max(diff(i$target_age))
 ta<-max(diff(i$max_age))

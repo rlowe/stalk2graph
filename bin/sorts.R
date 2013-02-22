@@ -1,6 +1,8 @@
+args<-commandArgs(trailingOnly = FALSE)
+
 require(ggplot2)
 
-sorts_data<-read.csv("sorts.csv")
+sorts_data<-read.csv(args[length(args)])
 
 smp<-diff(sorts_data$merge_passes)
 srange<-diff(sorts_data$range)

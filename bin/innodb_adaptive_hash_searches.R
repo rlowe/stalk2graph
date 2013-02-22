@@ -1,4 +1,6 @@
-i<-read.csv("innodb_adaptive_hash_searches.csv")
+args<-commandArgs(trailingOnly = FALSE)
+
+i<-read.csv(args[length(args)])
 
 jpeg('innodb_adaptive_hash_searches.jpg')
 options(scipen=20)

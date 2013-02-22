@@ -1,6 +1,8 @@
+args<-commandArgs(trailingOnly = FALSE)
+
 require(ggplot2)
 
-transaction_handlers_data<-read.csv("transaction_handlers.csv")
+transaction_handlers_data<-read.csv(args[length(args)])
 
 thc<-diff(transaction_handlers_data$commit)
 thr<-diff(transaction_handlers_data$rollback)

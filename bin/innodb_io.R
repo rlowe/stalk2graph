@@ -1,4 +1,5 @@
-i<-read.csv("innodb_io.csv")
+args<-commandArgs(trailingOnly = FALSE)
+i<-read.csv(args[length(args)])
 
 fr<-max(diff(i$file_reads))
 fw<-max(diff(i$file_writes))

@@ -1,4 +1,5 @@
-i<-read.csv("innodb_buffer_pool_activity.csv")
+args<-commandArgs(trailingOnly = FALSE)
+i<-read.csv(args[length(args)])
 
 mpc<-max(diff(i$pages_created))
 mpr<-max(diff(i$pages_read))

@@ -1,6 +1,8 @@
+args<-commandArgs(trailingOnly = FALSE)
+
 require(ggplot2)
 
-handlers_data<-read.csv("handlers.csv")
+handlers_data<-read.csv(args[length(args)])
 
 hw<-diff(handlers_data$write)
 hu<-diff(handlers_data$update)
