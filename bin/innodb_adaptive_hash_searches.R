@@ -1,8 +1,8 @@
 args<-commandArgs(trailingOnly = FALSE)
 
-i<-read.csv(args[length(args)])
+i<-read.csv(args[length(args)-1])
 
-jpeg('innodb_adaptive_hash_searches.jpg')
+png(args[length(args)],width=800)
 options(scipen=20)
 plot(diff(i$hash_searches), type="l", col="red", xlab="Time", ylab="Searches", main="InnoDB Adaptive Hash Searches", las=1, xaxt = "n")
 lines(diff(i$non_hash_searches), col="blue")

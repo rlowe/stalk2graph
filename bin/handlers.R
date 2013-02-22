@@ -2,9 +2,9 @@ args<-commandArgs(trailingOnly = FALSE)
 
 require(ggplot2)
 
-handlers_data<-read.csv(args[length(args)])
+handlers_data<-read.csv(args[length(args)-1])
 
-hw<-diff(handlers_data$write)
+hq<-diff(handlers_data$write)
 hu<-diff(handlers_data$update)
 hd<-diff(handlers_data$delete)
 hrf<-diff(handlers_data$read_first)
@@ -18,11 +18,11 @@ hrrn<-diff(handlers_data$read_rnd_next)
 handlers_data<-data.frame(Time="", Handler="", Value=as.numeric(""))
 handlers_data<-handlers_data[-1,]
 
-for (i in 1:length(hw)) {
+for (i in 1:length(hu)) {
     handlers_data<-rbind( handlers_data,
                                   data.frame(Time=as.character(i),
                                              Handler="Write",
-                                             Value=as.numeric(hw[i])))
+                                             Value=as.numeric(hq[i])))
     handlers_data<-rbind( handlers_data,
                                   data.frame(Time=as.character(i),
                                              Handler="Update",
@@ -61,7 +61,7 @@ for (i in 1:length(hw)) {
                                              Value=as.numeric(hrrn[i])))
 }
 
-jpeg('handlers.jpg')
+png(args[length(args)],width=800)
 ggplot(handlers_data, aes(x=Time, y=Value, fill=Handler, color=Handler, group=Handler, xaxt='n')) + geom_area(position = "stack", stat="identity") + ggtitle("MySQL Handlers")
 dev.off()
 

@@ -1,12 +1,12 @@
 args<-commandArgs(trailingOnly = FALSE)
-i<-read.csv(args[length(args)])
+i<-read.csv(args[length(args)-1])
 
 fr<-max(diff(i$file_reads))
 fw<-max(diff(i$file_writes))
 lw<-max(diff(i$log_writes))
 fs<-max(diff(i$file_syncs))
 
-jpeg('innodb_io.jpg')
+png(args[length(args)],width=800)
 options(scipen=20)
 
 if (fr > fw && fr > lw && fr > fs) {

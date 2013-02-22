@@ -1,10 +1,10 @@
 args<-commandArgs(trailingOnly = FALSE)
-i<-read.csv(args[length(args)])
+i<-read.csv(args[length(args)-1])
 
 ma<-max(diff(i$target_age))
 ta<-max(diff(i$max_age))
 
-jpeg('innodb_checkpoint.jpg')
+png(args[length(args)],width=800)
 options(scipen=20)
 
 if (ma>ta) {

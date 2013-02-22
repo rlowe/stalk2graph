@@ -451,6 +451,16 @@ File.open(File.expand_path("#{opt[:prefix]}.html", opt[:dest]), "w") do |f|
   f.write("<html><head></head><body>")
 
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/command_counters.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/handlers.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_adaptive_hash_searches.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_buffer_pool.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_buffer_pool_activity.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_checkpoint.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/select_types.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/sorts.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/transaction_handlers.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_insert_buffer.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_io.png' />")
   
   f.write("</html>")
 end

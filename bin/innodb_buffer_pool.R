@@ -1,10 +1,10 @@
 args<-commandArgs(trailingOnly = FALSE)
-i<-read.csv(args[length(args)])
+i<-read.csv(args[length(args)-1])
 
 # Convert this to GB
 i<-round((i*16)/1024/1024)
 
-jpeg('innodb_buffer_pool.jpg')
+png(args[length(args)],width=800)
 options(scipen=20)
 plot(i$pool_size,type="l",col="red",xlab="Time",ylab="Size (GB)",main="InnoDB Buffer Pool", las=1,xaxt="n")
 lines(i$database_pages, col="blue")

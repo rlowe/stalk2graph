@@ -1,7 +1,7 @@
 args<-commandArgs(trailingOnly = FALSE)
-i<-read.csv(args[length(args)])
+i<-read.csv(args[length(args)-1])
 
-jpeg('innodb_insert_buffer.jpg')
+png(args[length(args)],width=800)
 options(scipen=20)
 plot(diff(i$merges), type="l", col="red", xlab="Time", main="InnoDB Insert Buffer", las=1, xaxt = "n")
 lines(diff(i$free_list), col="blue")

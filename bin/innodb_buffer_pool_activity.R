@@ -1,11 +1,11 @@
 args<-commandArgs(trailingOnly = FALSE)
-i<-read.csv(args[length(args)])
+i<-read.csv(args[length(args)-1])
 
 mpc<-max(diff(i$pages_created))
 mpr<-max(diff(i$pages_read))
 mpw<-max(diff(i$pages_written))
 
-jpeg('innodb_buffer_pool_activity.jpg')
+png(args[length(args)],width=800)
 options(scipen=20)
 
 if (mpc > mpr && mpc>mpw) {

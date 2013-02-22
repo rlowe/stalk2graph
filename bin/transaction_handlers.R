@@ -2,7 +2,7 @@ args<-commandArgs(trailingOnly = FALSE)
 
 require(ggplot2)
 
-transaction_handlers_data<-read.csv(args[length(args)])
+transaction_handlers_data<-read.csv(args[length(args)-1])
 
 thc<-diff(transaction_handlers_data$commit)
 thr<-diff(transaction_handlers_data$rollback)
@@ -12,7 +12,7 @@ thsr<-diff(transaction_handlers_data$savepoint_rollback)
 transaction_handlers_data<-data.frame(Time="", Handler="", Value=as.numeric(""))
 transaction_handlers_data<-transaction_handlers_data[-1,]
 
-for (i in 1:length(hw)) {
+for (i in 1:length(ths)) {
     transaction_handlers_data<-rbind( transaction_handlers_data,
                                   data.frame(Time=as.character(i),
                                              Handler="Commit",
@@ -31,7 +31,7 @@ for (i in 1:length(hw)) {
                                              Value=as.numeric(thsr[i])))
 }
 
-jpeg('transaction_handlers.jpg')
+png(args[length(args)],width=800)
 ggplot(transaction_handlers_data, aes(x=Time, y=Value, fill=Handler, color=Handler, group=Handler, xaxt='n')) + geom_area(position = "stack", stat="identity") + ggtitle("MySQL Transaction Handlers")
 dev.off()
 
