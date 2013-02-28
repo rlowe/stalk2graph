@@ -32,6 +32,7 @@ for (i in 1:length(ss)) {
 }
 
 png(args[length(args)],width=800)
-ggplot(sorts_data, aes(x=Time, y=Value, fill=Type, color=Type, group=Type, xaxt='n')) + geom_area(position = "stack", stat="identity") + ggtitle("MySQL Sorts")
+options(scipen=20)
+ggplot(sorts_data, aes(x=Time, y=Value, fill=Type, color=Type, group=Type, xaxt='n')) + geom_area(position = "stack", stat="identity") + ggtitle("MySQL Sorts") + theme(axis.title.y = element_blank(), axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor=element_blank())
 dev.off()
 

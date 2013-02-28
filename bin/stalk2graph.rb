@@ -124,7 +124,7 @@ variables      = {}
 vmstat         = {}
 vmstat_overall = {}
 
-puts "#{`date`} - Processing pt-stalk files..."
+#puts "#{`date`} - Processing pt-stalk files..."
 
 ################################################################################
 # Output from SHOW GLOBAL STATUS
@@ -151,16 +151,11 @@ variables_file = File.open(File.join(opt[:dir], "#{opt[:prefix]}-variables")).re
 variables_file.each_line do |line|
   a = line.split(/\s+/)
   if a[0] != 'Variable_name'
-    if variables.has_key?(a[0])
-      variables[a[0]] << a[1]
-    else
-      variables[a[0]] = []
-      variables[a[0]] << a[1]
-    end
+    variables[a[0]] = a[1]
   end
 end
 
-puts "#{`date`} - Generating .csv files..."
+#puts "#{`date`} - Generating .csv files..."
 
 ################################################################################
 # Generate the data for the MySQL Command Counters Graph
@@ -395,54 +390,44 @@ File.open(File.expand_path("innodb_io.csv", opt[:dest]), "w") do |f|
 end
 
 ################################################################################
+# Generate the data for Connections
+################################################################################
+File.open(File.expand_path("connections.csv", opt[:dest]), "w") do |f|
+  f.write "max_connections,max_used_connections,aborted_clients,aborted_connects,threads_connected\n"
+
+  begin
+    for i in 1..(mysqladmin["Max_used_connections"].length-1)
+      f.write variables["max_connections"] + ","
+      f.write mysqladmin["Max_used_connections"][i] + ","
+      f.write mysqladmin["Aborted_clients"][i] + ","
+      f.write mysqladmin["Aborted_connects"][i] + ","
+      f.write mysqladmin["Threads_connected"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
+  end
+end
+
+################################################################################
 # Go through each .R script and execute to make the graphs
 ################################################################################
 
-puts "#{`date`} - Generating graphs..."
+#puts "#{`date`} - Generating graphs..."
 
-`Rscript #{File.dirname(__FILE__)}/command_counters.R #{File.expand_path("command_counters.csv", opt[:dest])} #{File.expand_path("command_counters.png", opt[:dest])}`
-`Rscript #{File.dirname(__FILE__)}/handlers.R #{File.expand_path("handlers.csv", opt[:dest])} #{File.expand_path("handlers.png", opt[:dest])}`
-`Rscript #{File.dirname(__FILE__)}/innodb_adaptive_hash_searches.R #{File.expand_path("innodb_adaptive_hash_searches.csv", opt[:dest])} #{File.expand_path("innodb_adaptive_hash_searches.png", opt[:dest])}`
-`Rscript #{File.dirname(__FILE__)}/innodb_buffer_pool.R #{File.expand_path("innodb_buffer_pool.csv", opt[:dest])} #{File.expand_path("innodb_buffer_pool.png", opt[:dest])}`
-`Rscript #{File.dirname(__FILE__)}/innodb_buffer_pool_activity.R #{File.expand_path("innodb_buffer_pool_activity.csv", opt[:dest])} #{File.expand_path("innodb_buffer_pool_activity.png", opt[:dest])}`
-`Rscript #{File.dirname(__FILE__)}/innodb_checkpoint.R #{File.expand_path("innodb_checkpoint.csv", opt[:dest])} #{File.expand_path("innodb_checkpoint.png", opt[:dest])}`
-`Rscript #{File.dirname(__FILE__)}/select_types.R #{File.expand_path("select_types.csv", opt[:dest])} #{File.expand_path("select_types.png", opt[:dest])}`
-`Rscript #{File.dirname(__FILE__)}/sorts.R #{File.expand_path("sorts.csv", opt[:dest])} #{File.expand_path("sorts.png", opt[:dest])}`
-`Rscript #{File.dirname(__FILE__)}/transaction_handlers.R #{File.expand_path("transaction_handlers.csv", opt[:dest])} #{File.expand_path("transaction_handlers.png", opt[:dest])}`
-`Rscript #{File.dirname(__FILE__)}/innodb_insert_buffer.R #{File.expand_path("innodb_insert_buffer.csv", opt[:dest])} #{File.expand_path("innodb_insert_buffer.png", opt[:dest])}`
-`Rscript #{File.dirname(__FILE__)}/innodb_io.R #{File.expand_path("innodb_io.csv", opt[:dest])} #{File.expand_path("innodb_io.png", opt[:dest])}`
-
-################################################################################
-# Clean up the .csv files
-################################################################################
-
-#`rm #{File.expand_path("command_counters.csv", opt[:dest])}`
-#`rm #{File.expand_path("handlers.csv", opt[:dest])}`
-#`rm #{File.expand_path("innodb_adaptive_hash_searches.csv", opt[:dest])}`
-#`rm #{File.expand_path("innodb_buffer_pool.csv", opt[:dest])}`
-#`rm #{File.expand_path("innodb_buffer_pool_activity.csv", opt[:dest])}`
-#`rm #{File.expand_path("innodb_checkpoint.csv", opt[:dest])}`
-#`rm #{File.expand_path("select_types.csv", opt[:dest])}`
-#`rm #{File.expand_path("sorts.csv", opt[:dest])}`
-#`rm #{File.expand_path("transaction_handlers.csv", opt[:dest])}`
-#`rm #{File.expand_path("innodb_insert_buffer.csv", opt[:dest])}`
-#`rm #{File.expand_path("innodb_io.csv", opt[:dest])}`
-
-################################################################################
-# Clean up the .Rout files
-################################################################################
-
-#`rm #{File.expand_path("command_counters.Rout", opt[:dest])}`
-#`rm #{File.expand_path("handlers.Rout", opt[:dest])}`
-#`rm #{File.expand_path("innodb_adaptive_hash_searches.Rout", opt[:dest])}`
-#`rm #{File.expand_path("innodb_buffer_pool.Rout", opt[:dest])}`
-#`rm #{File.expand_path("innodb_buffer_pool_activity.Rout", opt[:dest])}`
-#`rm #{File.expand_path("innodb_checkpoint.Rout", opt[:dest])}`
-#`rm #{File.expand_path("select_types.Rout", opt[:dest])}`
-#`rm #{File.expand_path("sorts.Rout", opt[:dest])}`
-#`rm #{File.expand_path("transaction_handlers.Rout", opt[:dest])}`
-#`rm #{File.expand_path("innodb_insert_buffer.Rout", opt[:dest])}`
-#`rm #{File.expand_path("innodb_io.Rout", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/command_counters.R #{File.expand_path("command_counters.csv", opt[:dest])} #{File.expand_path("command_counters.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/handlers.R #{File.expand_path("handlers.csv", opt[:dest])} #{File.expand_path("handlers.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/innodb_adaptive_hash_searches.R #{File.expand_path("innodb_adaptive_hash_searches.csv", opt[:dest])} #{File.expand_path("innodb_adaptive_hash_searches.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/innodb_buffer_pool.R #{File.expand_path("innodb_buffer_pool.csv", opt[:dest])} #{File.expand_path("innodb_buffer_pool.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/innodb_buffer_pool_activity.R #{File.expand_path("innodb_buffer_pool_activity.csv", opt[:dest])} #{File.expand_path("innodb_buffer_pool_activity.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/innodb_checkpoint.R #{File.expand_path("innodb_checkpoint.csv", opt[:dest])} #{File.expand_path("innodb_checkpoint.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/select_types.R #{File.expand_path("select_types.csv", opt[:dest])} #{File.expand_path("select_types.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/sorts.R #{File.expand_path("sorts.csv", opt[:dest])} #{File.expand_path("sorts.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/transaction_handlers.R #{File.expand_path("transaction_handlers.csv", opt[:dest])} #{File.expand_path("transaction_handlers.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/innodb_insert_buffer.R #{File.expand_path("innodb_insert_buffer.csv", opt[:dest])} #{File.expand_path("innodb_insert_buffer.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/innodb_io.R #{File.expand_path("innodb_io.csv", opt[:dest])} #{File.expand_path("innodb_io.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/connections.R #{File.expand_path("connections.csv", opt[:dest])} #{File.expand_path("connections.png", opt[:dest])}`
 
 ################################################################################
 # Create an .html page with all the graphs
@@ -461,7 +446,8 @@ File.open(File.expand_path("#{opt[:prefix]}.html", opt[:dest]), "w") do |f|
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/transaction_handlers.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_insert_buffer.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_io.png' />")
-  
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/connections.png' />")
+
   f.write("</html>")
 end
 
