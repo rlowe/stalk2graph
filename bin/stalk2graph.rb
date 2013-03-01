@@ -158,36 +158,110 @@ end
 ################################################################################
 # Output from SHOW FULL PROCESSLIST
 ################################################################################
-processlist_iterations = 0
+processlist_snapshots = 0
 processlist_file = File.open(File.join(opt[:dir], "#{opt[:prefix]}-processlist")).read
+processlist_states = [
+  'After create',
+  'Analyzing',
+  'checking permissions',
+  'Checking table',
+  'cleaning up',
+  'closing tables',
+  'conevrting HEAP to MyISAM',
+  'copy to tmp table',
+  'Copying to group table',
+  'Copying to tmp table',
+  'Copying to tmp table on disk',
+  'Creating index',
+  'Creating sort index',
+  'creating table',
+  'Creating tmp table',
+  'deleting from main table',
+  'deleting from reference tables',
+  'discard_or_import_tablespace',
+  'end',
+  'executing',
+  'Execution of init_command',
+  'freeing items',
+  'Flushing tables',
+  'FULLTEXT initialization',
+  'init',
+  'Killed',
+  'Locked',
+  'logging slow query', ## from here, below, they are wrong, just remove the symbol
+  'NULL',
+  'login',
+  'manage keys',
+  'Opening tables',
+  'Opening table',
+  'optimizing',
+  'preparing',
+  'Purging old relay logs',
+  'query end',
+  'Reading from net',
+  'Removing duplicates',
+  'removing tmp table',
+  'rename',
+  'rename result table',
+  'Reopen tables',
+  'Repair by sorting',
+  'Repair done',
+  'Repair with keycache',
+  'Rolling back',
+  'Saving state',
+  'Searching rows for update',
+  'Sending data',
+  'setup',
+  'Sorting for group',
+  'Sorting for order',
+  'Sorting index',
+  'Sorting result',
+  'statistics',
+  'System lock',
+  'Table lock',
+  'Updating',
+  'updating main table',
+  'updating reference tables',
+  'User lock',
+  'User sleep',
+  'Waiting for all running commits to finish',
+  'Waiting for commit lock',
+  'Waiting for global read lock',
+  'Waiting for release of readlock',
+  'Waiting for table',
+  'Waiting for tables',
+  'Waiting for table flush',
+  'Waiting for event metadata lock',
+  'Waiting for global metadata lock',
+  'Waiting for global read lock',
+  'Waiting for schema metadata lock',
+  'Waiting for stored function metadata lock',
+  'Waiting for stored procedure metadata lock',
+  'Waiting for table level lock',
+  'Waiting for table metadata lock',
+  'Waiting for trigger metadata lock',
+  'Waiting on cond',
+  'Waiting to get readlock',
+  'Writing to net',
+  'Waiting for master to send event',
+  'Slave has read all relay log; waiting for the slave I/O thread to update it',
+  'Master has sent all binlog to slave; waiting for binlog to be updated'
+]
 
 processlist_file.each_line do |line|
-  if line =~ / 1\. row /
-    processlist_iterations += 1
-    processlist[processlist_iterations] = {}
-    processlist[processlist_iterations][:none] = 0
-    processlist[processlist_iterations][:closing_tables] = 0
-    processlist[processlist_iterations][:opening_tables] = 0
-    processlist[processlist_iterations][:copying_to_tmp_table] = 0
-    processlist[processlist_iterations][:end] = 0
-    processlist[processlist_iterations][:freeing_items] = 0
-    processlist[processlist_iterations][:init] = 0
+  if line =~ /^TS [0-9][0-9]*/
+    processlist_snapshots += 1
+    processlist[processlist_snapshots] = {}
+    processlist_states.each { |state|
+      processlist[processlist_snapshots][state] = 0
+    }
+    processlist[processlist_snapshots][""] = 0
   elsif line =~ /^        State: /
-    s = /[:](.*)$/.match(line)[0]
-    if s == ': '
-      processlist[processlist_iterations][:none] += 1
-    elsif s == ': closing tables'
-      processlist[processlist_iterations][:closing_tables] += 1
-    elsif s == ': Opening tables'
-      processlist[processlist_iterations][:opening_tables] += 1
-    elsif s == ': copying to tmp table'
-      processlist[processlist_iterations][:copying_to_tmp_table] += 1
-    elsif s == ': query end'
-      processlist[processlist_iterations][:end] += 1
-    elsif s == ': freeing items'
-      processlist[processlist_iterations][:freeing_items] += 1
-    elsif s == ': init'
-      processlist[processlist_iterations][:init] += 1
+    s = /[:](.*)$/.match(line)[0][1..-1].strip
+    if processlist[processlist_snapshots].has_key? s
+      processlist[processlist_snapshots][s] += 1
+    else
+      processlist[processlist_snapshots][s] = 1
     end
   end
 end
