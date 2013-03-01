@@ -145,7 +145,7 @@ end
 ################################################################################
 # Output from SHOW GLOBAL VARIABLES
 #
-# We don't *expect* these to change during a capture, but they might
+# We expect only one set of results for an entire capture
 ################################################################################
 variables_file = File.open(File.join(opt[:dir], "#{opt[:prefix]}-variables")).read
 variables_file.each_line do |line|
@@ -154,6 +154,45 @@ variables_file.each_line do |line|
     variables[a[0]] = a[1]
   end
 end
+
+################################################################################
+# Output from SHOW FULL PROCESSLIST
+################################################################################
+processlist_iterations = 0
+processlist_file = File.open(File.join(opt[:dir], "#{opt[:prefix]}-processlist")).read
+
+processlist_file.each_line do |line|
+  if line =~ / 1\. row /
+    processlist_iterations += 1
+    processlist[processlist_iterations] = {}
+    processlist[processlist_iterations][:none] = 0
+    processlist[processlist_iterations][:closing_tables] = 0
+    processlist[processlist_iterations][:opening_tables] = 0
+    processlist[processlist_iterations][:copying_to_tmp_table] = 0
+    processlist[processlist_iterations][:end] = 0
+    processlist[processlist_iterations][:freeing_items] = 0
+    processlist[processlist_iterations][:init] = 0
+  elsif line =~ /^        State: /
+    s = /[:](.*)$/.match(line)[0]
+    if s == ': '
+      processlist[processlist_iterations][:none] += 1
+    elsif s == ': closing tables'
+      processlist[processlist_iterations][:closing_tables] += 1
+    elsif s == ': Opening tables'
+      processlist[processlist_iterations][:opening_tables] += 1
+    elsif s == ': copying to tmp table'
+      processlist[processlist_iterations][:copying_to_tmp_table] += 1
+    elsif s == ': query end'
+      processlist[processlist_iterations][:end] += 1
+    elsif s == ': freeing items'
+      processlist[processlist_iterations][:freeing_items] += 1
+    elsif s == ': init'
+      processlist[processlist_iterations][:init] += 1
+    end
+  end
+end
+
+puts processlist
 
 #puts "#{`date`} - Generating .csv files..."
 
@@ -411,6 +450,46 @@ File.open(File.expand_path("connections.csv", opt[:dest]), "w") do |f|
 end
 
 ################################################################################
+# Generate the data for Processlist States
+################################################################################
+File.open(File.expand_path("processlist_states.csv", opt[:dest]), "w") do |f|
+  f.write "none,closing_tables,copying_to_tmp_table,end,freeing_items"
+  f.write "init,locked,login,preparing,reading_from_net,sending_data"
+  f.write "sorting_result,statistics,updating,writing_to_net,other\n"
+
+  begin
+    for i in 1..(mysqladmin["Max_used_connections"].length-1)
+      f.write variables["max_connections"] + ","
+      f.write mysqladmin["Max_used_connections"][i] + ","
+      f.write mysqladmin["Aborted_clients"][i] + ","
+      f.write mysqladmin["Aborted_connects"][i] + ","
+      f.write mysqladmin["Threads_connected"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
+  end
+end
+
+# 300         State: Master has sent all binlog to slave; waiting for binlog to be updated
+#  84         State: NULL
+#  31         State: Reading from net
+# 171         State: Sending data
+#  60         State: Slave has read all relay log; waiting for the slave I/O thread to update it
+#  10         State: Sorting result
+#   2         State: Updating
+#  60         State: Waiting for master to send event
+#   9         State: Writing to net
+#   6         State: checking permissions
+#   3         State: executing
+#   1         State: optimizing
+#   7         State: preparing
+#   1         State: removing tmp table
+# 440         State: statistics
+#   3         State: update
+
+################################################################################
 # Go through each .R script and execute to make the graphs
 ################################################################################
 
@@ -450,17 +529,3 @@ File.open(File.expand_path("#{opt[:prefix]}.html", opt[:dest]), "w") do |f|
 
   f.write("</html>")
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
