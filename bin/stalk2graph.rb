@@ -266,8 +266,6 @@ processlist_file.each_line do |line|
   end
 end
 
-puts processlist
-
 #puts "#{`date`} - Generating .csv files..."
 
 ################################################################################
@@ -527,23 +525,27 @@ end
 # Generate the data for Processlist States
 ################################################################################
 File.open(File.expand_path("processlist_states.csv", opt[:dest]), "w") do |f|
-  f.write "none,closing_tables,copying_to_tmp_table,end,freeing_items"
-  f.write "init,locked,login,preparing,reading_from_net,sending_data"
-  f.write "sorting_result,statistics,updating,writing_to_net,other\n"
 
-  begin
-    for i in 1..(mysqladmin["Max_used_connections"].length-1)
-      f.write variables["max_connections"] + ","
-      f.write mysqladmin["Max_used_connections"][i] + ","
-      f.write mysqladmin["Aborted_clients"][i] + ","
-      f.write mysqladmin["Aborted_connects"][i] + ","
-      f.write mysqladmin["Threads_connected"][i] + "\n"
-    end
-  rescue
-    # We have this because sometimes Com_select has more records than Com_load
-    # So this just stops the for loop at the minimum without having to check each 
-    # array for length
+    processlist_states.each { |state|
+       delim = ","
+       if state == processlist_states.last
+         delim = "\n"
+       end
+       f.write state + delim
+    }
+
+  processlist.each do |capture, data|
+    i = 1;
+    data.each do |state, count|
+      delim = ","
+      if i == data.length
+        delim = "\n"
+      end
+      f.write count.to_s + delim
+      i += 1
+    end 
   end
+
 end
 
 # 300         State: Master has sent all binlog to slave; waiting for binlog to be updated
