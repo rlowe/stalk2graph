@@ -535,35 +535,16 @@ File.open(File.expand_path("processlist_states.csv", opt[:dest]), "w") do |f|
     }
 
   processlist.each do |capture, data|
-    i = 1;
-    data.each do |state, count|
+    processlist_states.each { |state| 
       delim = ","
-      if i == data.length
+      if state == processlist_states.last
         delim = "\n"
       end
-      f.write count.to_s + delim
-      i += 1
-    end 
+      f.write data[state].to_s + delim
+    }
   end
 
 end
-
-# 300         State: Master has sent all binlog to slave; waiting for binlog to be updated
-#  84         State: NULL
-#  31         State: Reading from net
-# 171         State: Sending data
-#  60         State: Slave has read all relay log; waiting for the slave I/O thread to update it
-#  10         State: Sorting result
-#   2         State: Updating
-#  60         State: Waiting for master to send event
-#   9         State: Writing to net
-#   6         State: checking permissions
-#   3         State: executing
-#   1         State: optimizing
-#   7         State: preparing
-#   1         State: removing tmp table
-# 440         State: statistics
-#   3         State: update
 
 ################################################################################
 # Go through each .R script and execute to make the graphs
@@ -572,6 +553,7 @@ end
 #puts "#{`date`} - Generating graphs..."
 
 `Rscript --no-save #{File.dirname(__FILE__)}/command_counters.R #{File.expand_path("command_counters.csv", opt[:dest])} #{File.expand_path("command_counters.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/processlist_states.R #{File.expand_path("processlist_states.csv", opt[:dest])} #{File.expand_path("processlist_states.png", opt[:dest])}`
 `Rscript --no-save #{File.dirname(__FILE__)}/handlers.R #{File.expand_path("handlers.csv", opt[:dest])} #{File.expand_path("handlers.png", opt[:dest])}`
 `Rscript --no-save #{File.dirname(__FILE__)}/innodb_adaptive_hash_searches.R #{File.expand_path("innodb_adaptive_hash_searches.csv", opt[:dest])} #{File.expand_path("innodb_adaptive_hash_searches.png", opt[:dest])}`
 `Rscript --no-save #{File.dirname(__FILE__)}/innodb_buffer_pool.R #{File.expand_path("innodb_buffer_pool.csv", opt[:dest])} #{File.expand_path("innodb_buffer_pool.png", opt[:dest])}`
