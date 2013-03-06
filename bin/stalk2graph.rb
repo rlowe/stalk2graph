@@ -563,6 +563,22 @@ File.open(File.expand_path("mysql_network_traffic.csv", opt[:dest]), "w") do |f|
 end
 
 ################################################################################
+# Generate the data for table locks
+################################################################################
+File.open(File.expand_path("table_locks.csv", opt[:dest]), "w") do |f|
+  f.write "immediate,waited\n"
+
+  begin
+    for i in 1..(mysqladmin["Table_locks_waited"].length)
+      f.write mysqladmin["Table_locks_immediate"][i] + ","
+      f.write mysqladmin["Table_locks_waited"][i] + "\n"
+    end
+  rescue
+
+  end
+end
+
+################################################################################
 # Go through each .R script and execute to make the graphs
 ################################################################################
 
@@ -582,6 +598,7 @@ end
 `Rscript --no-save #{File.dirname(__FILE__)}/innodb_io.R #{File.expand_path("innodb_io.csv", opt[:dest])} #{File.expand_path("innodb_io.png", opt[:dest])}`
 `Rscript --no-save #{File.dirname(__FILE__)}/connections.R #{File.expand_path("connections.csv", opt[:dest])} #{File.expand_path("connections.png", opt[:dest])}`
 `Rscript --no-save #{File.dirname(__FILE__)}/mysql_network_traffic.R #{File.expand_path("mysql_network_traffic.csv", opt[:dest])} #{File.expand_path("mysql_network_traffic.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/table_locks.R #{File.expand_path("table_locks.csv", opt[:dest])} #{File.expand_path("table_locks.png", opt[:dest])}`
 
 ################################################################################
 # Create an .html page with all the graphs
@@ -602,6 +619,7 @@ File.open(File.expand_path("#{opt[:prefix]}.html", opt[:dest]), "w") do |f|
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_io.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/connections.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/mysql_network_traffic.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/table_locks.png' />")
 
   f.write("</html>")
 end
