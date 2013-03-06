@@ -547,6 +547,22 @@ File.open(File.expand_path("processlist_states.csv", opt[:dest]), "w") do |f|
 end
 
 ################################################################################
+# Generate the data for MySQL network traffic
+################################################################################
+File.open(File.expand_path("mysql_network_traffic.csv", opt[:dest]), "w") do |f|
+  f.write "bytes_sent,bytes_received\n"
+
+  begin
+    for i in 1..(mysqladmin["Bytes_received"].length)
+      f.write mysqladmin["Bytes_sent"][i] + ","
+      f.write mysqladmin["Bytes_received"][i] + "\n"
+    end
+  rescue
+
+  end
+end
+
+################################################################################
 # Go through each .R script and execute to make the graphs
 ################################################################################
 
@@ -565,6 +581,7 @@ end
 `Rscript --no-save #{File.dirname(__FILE__)}/innodb_insert_buffer.R #{File.expand_path("innodb_insert_buffer.csv", opt[:dest])} #{File.expand_path("innodb_insert_buffer.png", opt[:dest])}`
 `Rscript --no-save #{File.dirname(__FILE__)}/innodb_io.R #{File.expand_path("innodb_io.csv", opt[:dest])} #{File.expand_path("innodb_io.png", opt[:dest])}`
 `Rscript --no-save #{File.dirname(__FILE__)}/connections.R #{File.expand_path("connections.csv", opt[:dest])} #{File.expand_path("connections.png", opt[:dest])}`
+`Rscript --no-save #{File.dirname(__FILE__)}/mysql_network_traffic.R #{File.expand_path("mysql_network_traffic.csv", opt[:dest])} #{File.expand_path("mysql_network_traffic.png", opt[:dest])}`
 
 ################################################################################
 # Create an .html page with all the graphs
@@ -584,6 +601,7 @@ File.open(File.expand_path("#{opt[:prefix]}.html", opt[:dest]), "w") do |f|
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_insert_buffer.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_io.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/connections.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/mysql_network_traffic.png' />")
 
   f.write("</html>")
 end
