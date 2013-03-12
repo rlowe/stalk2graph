@@ -1,0 +1,11 @@
+args<-commandArgs(trailingOnly = FALSE)
+i<-read.csv(args[length(args)-1])
+
+png(filename=args[length(args)], width=800)
+options(scipen=20)
+plot(NULL,xlim=c(0,length(i$cache_use)),ylim=c(0,ymax=max(i$cache_size)*1.25),xaxs="i", yaxs="i", ylab="", xlab="", main="Binary Log Cache",las=1,xaxt="n", type="h")
+rect(0,0,length(i$cache_size),max(i$cache_size),col="lightgray")
+lines(diff(i$cache_use), col="blue")
+lines(diff(i$cache_disk_use), col="red")
+legend("top", ncol=2, legend=c("Cache Size", "Cache Use", "Cache Disk Use"), col=c("lightgray","blue","red"), lty=1,lwd=2, bty="n")
+dev.off()

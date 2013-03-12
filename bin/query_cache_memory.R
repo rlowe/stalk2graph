@@ -1,0 +1,12 @@
+args<-commandArgs(trailingOnly = FALSE)
+i<-read.csv(args[length(args)-1])
+
+png(filename=args[length(args)], width=800)
+options(scipen=20)
+plot(NULL,xlim=c(0,length(i$total_blocks)),ylim=c(0,ymax=max(i)*1.25),xaxs="i", yaxs="i", ylab="", xlab="", main="Query Cache Memory",las=1,xaxt="n", type="h")
+rect(0,0,length(i$cache_size),max(i$cache_size),col="lightgray")
+lines(i$free_blocks, col="orange")
+lines(i$free_memory, col="green")
+lines(i$total_blocks, col="purple")
+legend("top", ncol=2, legend=c("Cache Size", "Free Blocks", "Free Memory", "Total Blocks"), col=c("lightgray","orange","green","purple"), lty=1,lwd=2, bty="n")
+dev.off()
