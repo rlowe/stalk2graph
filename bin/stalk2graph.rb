@@ -3,6 +3,7 @@
 require 'rubygems'
 require 'getoptlong'
 require 'json'
+require 'pp' # For Debugging 
 
 ################################################################################
 # stalk2graph.rb - Convert pt-stalk output into something easily graphable
@@ -106,9 +107,11 @@ hostname       = {}
 innodbstatus1  = {}
 innodbstatus2  = {}
 interrupts     = {}
+iostat         = {}
 lock_waits     = {}
 lsof           = {}
 meminfo        = {}
+mpstat         = {}
 mutex_status1  = {}
 mutex_status2  = {}
 mysqladmin     = {}
@@ -136,7 +139,7 @@ vmstat_overall = {}
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Processing pt-stalk mysqladmin ..."
+  puts "#{`date`.chomp} - Processing pt-stalk mysqladmin ..."
 end
 
 mysqladmin_file = File.open(File.join(opt[:dir], "#{opt[:prefix]}-mysqladmin")).read
@@ -159,7 +162,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Processing pt-stalk variables ..."
+  puts "#{`date`.chomp} - Processing pt-stalk variables ..."
 end
 
 variables_file = File.open(File.join(opt[:dir], "#{opt[:prefix]}-variables")).read
@@ -171,17 +174,265 @@ variables_file.each_line do |line|
 end
 
 ################################################################################
+# Output from `mpstat`
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Processing mpstat output ..."
+end
+
+cores=0
+
+mpstat_i=0
+
+mpstat_file = File.open(File.join(opt[:dir], "#{opt[:prefix]}-mpstat")).read
+mpstat_file.each_line do |line|
+  if line.length != 1 && !line.include?('CPU') && !line.include?('Average') && !line.include?('Linux')
+    a = line.split(/\s+/)
+
+    if a[2].to_s == 'all'
+      mpstat_i += 1
+      mpstat[mpstat_i] = {}
+    else
+      if a[2].to_i > cores.to_i
+        cores = a[2].to_i
+      end
+    end
+
+    mpstat[mpstat_i][a[2]] = {}
+    mpstat[mpstat_i][a[2]][:usr] = a[3]
+    mpstat[mpstat_i][a[2]][:nice] = a[4]
+    mpstat[mpstat_i][a[2]][:sys] = a[5]
+    mpstat[mpstat_i][a[2]][:iowait] = a[6]
+    mpstat[mpstat_i][a[2]][:irq] = a[7]
+    mpstat[mpstat_i][a[2]][:soft] = a[8]
+    mpstat[mpstat_i][a[2]][:steal] = a[9]
+    mpstat[mpstat_i][a[2]][:guest] = a[10]
+    mpstat[mpstat_i][a[2]][:idle] = a[11]
+
+  end
+end
+
+################################################################################
+# Output from meminfo
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Processing meminfo ..."
+end
+
+meminfo_file = File.open(File.join(opt[:dir], "#{opt[:prefix]}-meminfo")).read
+meminfo_file.each_line do |line|
+  a = line.split(/\s+/)
+
+  if a[0] != 'TS'
+    a0 = a[0][0..-2]
+    if meminfo.has_key?(a0)
+      meminfo[a0] << a[1]
+    else
+      meminfo[a0] = []
+      meminfo[a0] << a[1]
+    end
+
+  end
+end
+
+################################################################################
+# Output from iostat
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Processing iostat ..."
+end
+
+disks = Array.new
+
+iostat_file = File.open(File.join(opt[:dir], "#{opt[:prefix]}-iostat")).read
+iostat_file.each_line do |line|
+  if line.length > 2
+    a = line.split(/\s+/)
+    if a[0] != 'Linux' && a[0] != 'Device:'
+      if iostat.has_key?(a[0])
+        iostat[a[0]][:rrqm] << a[1]
+        iostat[a[0]][:wrqm] << a[2]
+        iostat[a[0]][:r] << a[3]
+        iostat[a[0]][:w] << a[4]
+        iostat[a[0]][:rsec] << a[5]
+        iostat[a[0]][:wsec] << a[6]
+        iostat[a[0]][:avgrqsz] << a[7]
+        iostat[a[0]][:avgqusz] << a[8]
+        iostat[a[0]][:await] << a[9]
+        iostat[a[0]][:svctm] << a[10]
+      else
+        iostat[a[0]] = {}
+        iostat[a[0]][:rrqm] = []
+        iostat[a[0]][:wrqm] = []
+        iostat[a[0]][:r] = []
+        iostat[a[0]][:w] = []
+        iostat[a[0]][:rsec] = []
+        iostat[a[0]][:wsec] = []
+        iostat[a[0]][:avgrqsz] = []
+        iostat[a[0]][:avgqusz] = []
+        iostat[a[0]][:await] = []
+        iostat[a[0]][:svctm] = []
+
+        iostat[a[0]][:rrqm] << a[1]
+        iostat[a[0]][:wrqm] << a[2]
+        iostat[a[0]][:r] << a[3]
+        iostat[a[0]][:w] << a[4]
+        iostat[a[0]][:rsec] << a[5]
+        iostat[a[0]][:wsec] << a[6]
+        iostat[a[0]][:avgrqsz] << a[7]
+        iostat[a[0]][:avgqusz] << a[8]
+        iostat[a[0]][:await] << a[9]
+        iostat[a[0]][:svctm] << a[10]
+      end
+    end
+  end
+end
+
+################################################################################
+# Output from netstat
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Processing netstat ..."
+end
+
+netstat_i = 0
+netstat_j = 0
+
+netstat_file = File.open(File.join(opt[:dir], "#{opt[:prefix]}-netstat")).read
+netstat_file.each_line do |line|
+  a = line.split(/\s+/)
+  if a[0] == 'Active'
+    netstat_i += 1
+    netstat[netstat_i] = {}
+    netstat_j = 1
+    netstat[netstat_i][netstat_j] = {}
+  elsif a[0] == 'TS' || a[0] == 'Proto'
+    # Do Nothing
+  else
+    netstat[netstat_i][netstat_j][:proto] = a[0]
+    netstat[netstat_i][netstat_j][:recvq] = a[1]
+    netstat[netstat_i][netstat_j][:sendq] = a[2]
+    netstat[netstat_i][netstat_j][:local_address] = a[3]
+    netstat[netstat_i][netstat_j][:foreign_address] = a[4]
+    netstat[netstat_i][netstat_j][:state] = a[5]
+    netstat[netstat_i][netstat_j][:pid] = a[6]
+    netstat_j += 1
+    netstat[netstat_i][netstat_j] = {}
+  end
+end
+
+################################################################################
+# Output from vmstat
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Processing vmstat ..."
+end
+
+    vmstat[:r] = Array.new
+    vmstat[:b] = Array.new
+    vmstat[:swpd] = Array.new
+    vmstat[:free] = Array.new
+    vmstat[:buff] = Array.new
+    vmstat[:cache] = Array.new
+    vmstat[:si] = Array.new
+    vmstat[:so] = Array.new
+    vmstat[:bi] = Array.new
+    vmstat[:bo] = Array.new
+    vmstat[:in] = Array.new
+    vmstat[:cs] = Array.new
+    vmstat[:us] = Array.new
+    vmstat[:sy] = Array.new
+    vmstat[:id] = Array.new
+    vmstat[:wa] = Array.new
+    vmstat[:st] = Array.new
+
+vmstat_file = File.open(File.join(opt[:dir], "#{opt[:prefix]}-vmstat")).read
+vmstat_file.each_line do |line|
+  a = line.split(/\s+/)
+  if a[0] != 'procs' && a[0] != 'r' && a[1] != 'r'
+    vmstat[:r] << a[0]
+    vmstat[:b] << a[1]
+    vmstat[:swpd] << a[2]
+    vmstat[:free] << a[3]
+    vmstat[:buff] << a[4]
+    vmstat[:cache] << a[5]
+    vmstat[:si] << a[6]
+    vmstat[:so] << a[7]
+    vmstat[:bi] << a[8]
+    vmstat[:bo] << a[9]
+    vmstat[:in] << a[10]
+    vmstat[:cs] << a[11]
+    vmstat[:us] << a[12]
+    vmstat[:sy] << a[13]
+    vmstat[:id] << a[14]
+    vmstat[:wa] << a[15]
+    vmstat[:st] << a[16]
+  end
+end
+
+################################################################################
+# Output from diskstats
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Processing vmstat ..."
+end
+
+diskstats_i = 0
+
+diskstats_file= File.open(File.join(opt[:dir], "#{opt[:prefix]}-diskstats")).read
+diskstats_file.each_line do |line|
+  a = line.split(/\s+/)
+
+  if a[0] == 'TS'
+    diskstats_i += 1
+    diskstats[diskstats_i] = {}
+  elsif iostat.keys.include? a[3]
+    if !diskstats[diskstats_i].has_key? a[3]
+      diskstats[diskstats_i][a[3]] = {}
+      diskstats[diskstats_i][a[3]][:reads_issued] = Array.new
+      diskstats[diskstats_i][a[3]][:reads_merged] = Array.new
+      diskstats[diskstats_i][a[3]][:sectors_read] = Array.new
+      diskstats[diskstats_i][a[3]][:time_reading] = Array.new
+      diskstats[diskstats_i][a[3]][:writes_completed] = Array.new
+      diskstats[diskstats_i][a[3]][:sectors_written] = Array.new
+      diskstats[diskstats_i][a[3]][:time_writing] = Array.new
+      diskstats[diskstats_i][a[3]][:io_in_progress] = Array.new
+      diskstats[diskstats_i][a[3]][:time_io] = Array.new
+      diskstats[diskstats_i][a[3]][:weighted_time_io] = Array.new
+    else
+      diskstats[diskstats_i][a[3]][:reads_issued] = a[4]
+      diskstats[diskstats_i][a[3]][:reads_merged] = a[5]
+      diskstats[diskstats_i][a[3]][:sectors_read] = a[6]
+      diskstats[diskstats_i][a[3]][:time_reading] = a[7]
+      diskstats[diskstats_i][a[3]][:writes_completed] = a[8]
+      diskstats[diskstats_i][a[3]][:sectors_written] = a[9]
+      diskstats[diskstats_i][a[3]][:time_writing] = a[10]
+      diskstats[diskstats_i][a[3]][:io_in_progress] = a[11]
+      diskstats[diskstats_i][a[3]][:time_io] = a[12]
+      diskstats[diskstats_i][a[3]][:weighted_time_io] = a[13]
+    end
+  end
+end
+
+################################################################################
 # We have to behave differently based on versions :-(
 ################################################################################
-MYSQL_VERSION_FULL=variables['version'].match(/\d+\.\d+\.\d+/).to_s
-MYSQL_VERSION_MAJOR=variables['version'].match(/\d+\.\d+/).to_s
+
+mysql_version_full=variables['version'].match(/\d+\.\d+\.\d+/).to_s
+mysql_version_major=variables['version'].match(/\d+\.\d+/).to_s
 
 ################################################################################
 # Output from SHOW FULL PROCESSLIST
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Processing pt-stalk processlist ..."
+  puts "#{`date`.chomp} - Processing pt-stalk processlist ..."
 end
 
 processlist_snapshots = 0
@@ -297,7 +548,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for Command Counters ..."
+  puts "#{`date`.chomp} - Generating .csv file for Command Counters ..."
 end
 
 if File.exists?(File.expand_path("command_counters.csv", opt[:dest]))
@@ -327,12 +578,12 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL Handlers ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Handlers ..."
 end
 
 File.open(File.expand_path("handlers.csv", opt[:dest]), "w") do |f|
   f.write "write,update,delete,read_first,read_key,"
-  if MYSQL_VERSION_MAJOR == '5.5'
+  if mysql_version_major == '5.5'
     f.write "read_last,"
   end
   f.write "read_next,read_prev,read_rnd,read_rnd_next\n"
@@ -343,7 +594,7 @@ File.open(File.expand_path("handlers.csv", opt[:dest]), "w") do |f|
     f.write mysqladmin["Handler_delete"][i] + ","
     f.write mysqladmin["Handler_read_first"][i] + ","
     f.write mysqladmin["Handler_read_key"][i] + ","
-    if MYSQL_VERSION_MAJOR == '5.5'
+    if mysql_version_major == '5.5'
       f.write mysqladmin["Handler_read_last"][i] + ","
     end
     f.write mysqladmin["Handler_read_next"][i] + ","
@@ -358,7 +609,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL Select Types ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Select Types ..."
 end
 
 File.open(File.expand_path("select_types.csv", opt[:dest]), "w") do |f|
@@ -384,7 +635,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL Sorts ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Sorts ..."
 end
 
 File.open(File.expand_path("sorts.csv", opt[:dest]), "w") do |f|
@@ -409,7 +660,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL Transaction Handlers ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Transaction Handlers ..."
 end
 
 File.open(File.expand_path("transaction_handlers.csv", opt[:dest]), "w") do |f|
@@ -435,22 +686,22 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL InnoDB Adaptive Hash Searches ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL InnoDB Adaptive Hash Searches ..."
 end
 
-INNODB_ADAPTIVE_HASH_SEARCHES=true
+innodb_adaptive_hash_searches=true
 
 if mysqladmin["Innodb_adaptive_hash_hash_searches"]
   File.open(File.expand_path("innodb_adaptive_hash_searches.csv", opt[:dest]), "w") do |f|
     f.write "hash_searches,non_hash_searches\n"
 
-    for i in 1..(mysqladmin["Innodb_adaptive_hash_hash_searches"].length)
+    for i in 1..(mysqladmin["Innodb_adaptive_hash_hash_searches"].length-1)
       f.write mysqladmin["Innodb_adaptive_hash_hash_searches"][i] + ","
       f.write mysqladmin["Innodb_adaptive_hash_non_hash_searches"][i] + "\n"
     end
   end
 else
-  INNODB_ADAPTIVE_HASH_SEARCHES=false
+  innodb_adaptive_hash_searches=false
 end
 
 ################################################################################
@@ -458,7 +709,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL InnoDB Buffer Pool ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL InnoDB Buffer Pool ..."
 end
 
 File.open(File.expand_path("innodb_buffer_pool.csv", opt[:dest]), "w") do |f|
@@ -483,7 +734,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL InnoDB Buffer Pool Activity ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL InnoDB Buffer Pool Activity ..."
 end
 
 File.open(File.expand_path("innodb_buffer_pool_activity.csv", opt[:dest]), "w") do |f|
@@ -507,16 +758,16 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL InnoDB Insert Buffer ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL InnoDB Insert Buffer ..."
 end
 
-INNODB_IBUF = true
+innodb_ibuf = true
 
 if mysqladmin["Innodb_ibuf_merges"]
   File.open(File.expand_path("innodb_insert_buffer.csv", opt[:dest]), "w") do |f|
     f.write "free_list,merged_delete_marks,merged_deletes,merged_inserts,merges\n"
 
-    for i in 1..(mysqladmin["Innodb_ibuf_merges"].length)
+    for i in 1..(mysqladmin["Innodb_ibuf_merges"].length-1)
       f.write mysqladmin["Innodb_ibuf_free_list"][i] + ","
       f.write mysqladmin["Innodb_ibuf_merged_delete_marks"][i] + ","
       f.write mysqladmin["Innodb_ibuf_merged_deletes"][i] + ","
@@ -525,7 +776,7 @@ if mysqladmin["Innodb_ibuf_merges"]
     end
   end
 else
-  INNODB_IBUF = false
+  innodb_ibuf = false
 end
 
 ################################################################################
@@ -533,7 +784,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL InnoDB I/O Graph ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL InnoDB I/O Graph ..."
 end
 
 File.open(File.expand_path("innodb_io.csv", opt[:dest]), "w") do |f|
@@ -558,7 +809,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL Connections ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Connections ..."
 end
 
 File.open(File.expand_path("connections.csv", opt[:dest]), "w") do |f|
@@ -584,7 +835,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL Processlist States ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Processlist States ..."
 end
 
 File.open(File.expand_path("processlist_states.csv", opt[:dest]), "w") do |f|
@@ -614,7 +865,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL Network Traffic ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Network Traffic ..."
 end
 
 File.open(File.expand_path("mysql_network_traffic.csv", opt[:dest]), "w") do |f|
@@ -635,7 +886,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL Table Locks ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Table Locks ..."
 end
 
 File.open(File.expand_path("table_locks.csv", opt[:dest]), "w") do |f|
@@ -656,7 +907,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL Query Cache ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Query Cache ..."
 end
 
 File.open(File.expand_path("query_cache.csv", opt[:dest]), "w") do |f|
@@ -680,7 +931,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for MySQL Query Cache Memory ..."
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Query Cache Memory ..."
 end
 
 File.open(File.expand_path("query_cache_memory.csv", opt[:dest]), "w") do |f|
@@ -700,7 +951,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`} - Generating .csv file for Binary Log Cache ..."
+  puts "#{`date`.chomp} - Generating .csv file for Binary Log Cache ..."
 end
 
 File.open(File.expand_path("binlog_cache.csv", opt[:dest]), "w") do |f|
@@ -715,66 +966,380 @@ File.open(File.expand_path("binlog_cache.csv", opt[:dest]), "w") do |f|
 end
 
 ################################################################################
+# Generate the data for Table Definitions
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for Table Definitions ..."
+end
+
+table_definitions = true
+
+if mysqladmin["Opened_table_definitions"]
+  File.open(File.expand_path("table_definitions.csv", opt[:dest]), "w") do |f|
+    f.write "definition_cache,open_table_defs,opened_table_defs\n"
+
+    for i in 1..(mysqladmin["Opened_table_definitions"].length-1)
+      f.write variables["table_definition_cache"] + ","
+      f.write mysqladmin["Open_table_definitions"][i] + ","
+      f.write mysqladmin["Opened_table_definitions"][i] + "\n"
+    end
+  end
+else
+  table_definitions = false
+end
+
+################################################################################
+# Generate the data for Files and Tables
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for Files and Tables ..."
+end
+
+tc = "table_open_cache"
+
+if mysql_version_major == '5.0'
+  tc = "table_cache"
+end
+
+File.open(File.expand_path("files_and_tables.csv", opt[:dest]), "w") do |f|
+  f.write "table_cache,open_tables,open_files,opened_tables\n"
+
+  for i in 1..(mysqladmin["Opened_tables"].length-1)
+    f.write variables[tc] + ","
+    f.write mysqladmin["Open_tables"][i] + ","
+    f.write mysqladmin["Open_files"][i] + ","
+    f.write mysqladmin["Opened_tables"][i] + "\n"
+  end
+
+end
+
+################################################################################
+# Generate the data for MyISAM Key Cache
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for MyISAM Key Cache ..."
+end
+
+File.open(File.expand_path("myisam_key_cache.csv", opt[:dest]), "w") do |f|
+  f.write "key_buffer_size,blocks_used,blocks_not_flushed\n"
+
+  for i in 1..(mysqladmin["Key_blocks_not_flushed"].length-1)
+    f.write variables["key_buffer_size"] + ","
+    f.write mysqladmin["Key_blocks_used"][i] + ","
+    f.write mysqladmin["Key_blocks_not_flushed"][i] + "\n"
+  end
+
+end
+
+################################################################################
+# Generate the data for MyISAM Indexes
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for MyISAM Indexes ..."
+end
+
+File.open(File.expand_path("myisam_indexes.csv", opt[:dest]), "w") do |f|
+  f.write "read_requests,reads,write_requests,writes\n"
+
+  for i in 1..(mysqladmin["Key_read_requests"].length-1)
+    f.write mysqladmin["Key_read_requests"][i] + ","
+    f.write mysqladmin["Key_reads"][i] + ","
+    f.write mysqladmin["Key_write_requests"][i] + ","
+    f.write mysqladmin["Key_writes"][i] + "\n"
+  end
+
+end
+
+################################################################################
+# Generate the data for Temp Tables
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for Temp Tables ..."
+end
+
+File.open(File.expand_path("temp_tables.csv", opt[:dest]), "w") do |f|
+  f.write "tmp_tables,tmp_disk_tables\n"
+
+  for i in 1..(mysqladmin["Created_tmp_tables"].length-1)
+    f.write mysqladmin["Created_tmp_tables"][i] + ","
+    f.write mysqladmin["Created_tmp_disk_tables"][i] + "\n"
+  end
+
+end
+
+################################################################################
+# Generate the data for Overall CPU Usage
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for Overall CPU Usage ..."
+end
+
+File.open(File.expand_path("overall_cpu_usage.csv", opt[:dest]), "w") do |f|
+  f.write "user,nice,sys,iowait,irq,soft,steal,guest,idle\n"
+
+  for i in 1..(mpstat.length-1)
+    f.write mpstat[i]["all"][:usr]+ ","
+    f.write mpstat[i]["all"][:nice] + ","
+    f.write mpstat[i]["all"][:sys] + ","
+    f.write mpstat[i]["all"][:iowait] + ","
+    f.write mpstat[i]["all"][:irq] + ","
+    f.write mpstat[i]["all"][:soft] + ","
+    f.write mpstat[i]["all"][:steal] + ","
+    f.write mpstat[i]["all"][:guest] + ","
+    f.write mpstat[i]["all"][:idle] + "\n"
+  end
+
+end
+
+################################################################################
+# Generate the data for Per-CPU Non-Idle
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for Per-CPU Non-Idle ..."
+end
+
+File.open(File.expand_path("per_cpu_non_idle.csv", opt[:dest]), "w") do |f|
+
+  header=""
+
+  for i in 0..(cores)
+    header += "CPU#{i},"
+  end
+
+  f.write header[0..-1] + "\n"
+
+  mpstat.keys.sort.each do |k|
+    for j in 0..(cores)
+      f.write mpstat[k]["#{j}"][:usr].to_f+mpstat[k]["#{j}"][:nice].to_f+mpstat[k]["#{j}"][:sys].to_f+mpstat[k]["#{j}"][:iowait].to_f+mpstat[k]["#{j}"][:irq].to_f+mpstat[k]["#{j}"][:soft].to_f+mpstat[k]["#{j}"][:steal].to_f+mpstat[k]["#{j}"][:guest].to_f
+      f.write ","
+    end
+    f.write "\n"
+  end
+
+end
+
+################################################################################
+# Generate the data for Linux Memory
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for Linux Memory ..."
+end
+
+File.open(File.expand_path("linux_memory.csv", opt[:dest]), "w") do |f|
+  f.write "Total,Free,Cached,SwapCached\n"
+
+  for i in 1..(meminfo["MemTotal"].length-1)
+    f.write meminfo["MemTotal"][i] + ","
+    f.write meminfo["MemFree"][i] + ","
+    f.write meminfo["Cached"][i] + ","
+    f.write meminfo["SwapCached"][i] + "\n"
+  end
+end
+
+################################################################################
+# Generate the data for Disk IO
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv files for Disk IO ..."
+end
+
+iostat.keys.each do |disk|
+  File.open(File.expand_path("iostat_rw_#{disk}.csv", opt[:dest]), "w") do |f|
+    f.write "r,w\n"
+
+    for i in 1..(iostat[disk][:r].length-1)
+      f.write iostat[disk][:r][i] + ","
+      f.write iostat[disk][:w][i] + "\n"
+    end
+  end
+
+  File.open(File.expand_path("iostat_time_#{disk}.csv", opt[:dest]), "w") do |f|
+    f.write "queue,service\n"
+
+    for i in 1..(iostat[disk][:svctm].length-1)
+      if  iostat[disk][:await][i].to_f >= iostat[disk][:svctm][i].to_f
+        f.write iostat[disk][:await][i].to_f - iostat[disk][:svctm][i].to_f
+        f.write "," + iostat[disk][:svctm][i] + "\n"
+      end
+    end
+  end
+end
+
+################################################################################
+# Generate the data for network connection states
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for Network Connection States ..."
+end
+
+File.open(File.expand_path("network_connection_states.csv", opt[:dest]), "w") do |f|
+  f.write "send_syn,syn_received,established,listen,fin_wait_1,time_wait,close_wait,fin_wait_2,last_ack,closed\n"
+
+  for i in 1..(netstat.length)
+    a = {}
+    a[:send_syn] = 0
+    a[:syn_received] = 0
+    a[:established] = 0
+    a[:listen] = 0
+    a[:fin_wait_1] = 0
+    a[:time_wait] = 0
+    a[:close_wait] = 0
+    a[:fin_wait_2] = 0
+    a[:last_ack] = 0
+    a[:closed] = 0
+
+    for j in 1..(netstat[i].length)
+      if netstat[i][j][:state] == 'SEND_SYN' then a[:send_syn] += 1 end
+      if netstat[i][j][:state] == 'SYN_RECEIVED' then a[:syn_received] += 1 end
+      if netstat[i][j][:state] == 'ESTABLISHED' then a[:established] += 1 end
+      if netstat[i][j][:state] == 'LISTEN' then a[:listen] += 1 end
+      if netstat[i][j][:state] == 'FIN_WAIT_1' then a[:fin_wait_1] += 1 end
+      if netstat[i][j][:state] == 'TIME_WAIT' then a[:time_wait] += 1 end
+      if netstat[i][j][:state] == 'CLOSE_WAIT' then a[:close_wait] += 1 end
+      if netstat[i][j][:state] == 'FIN_WAIT_2' then a[:fin_wait_2] += 1 end
+      if netstat[i][j][:state] == 'LAST_ACK' then a[:last_ack] += 1 end
+      if netstat[i][j][:state] == 'CLOSED' then a[:closed] += 1 end
+    end
+
+    f.write a[:send_syn].to_s + ","
+    f.write a[:syn_received].to_s + ","
+    f.write a[:established].to_s + ","
+    f.write a[:listen].to_s + ","
+    f.write a[:fin_wait_1].to_s + ","
+    f.write a[:time_wait].to_s + ","
+    f.write a[:close_wait].to_s + ","
+    f.write a[:fin_wait_2].to_s + ","
+    f.write a[:last_ack].to_s + ","
+    f.write a[:closed].to_s + "\n"
+  end
+end
+
+################################################################################
+# Generate the data for swap
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for swap ..."
+end
+
+File.open(File.expand_path("swap.csv", opt[:dest]), "w") do |f|
+  f.write "si,so\n"
+
+  for i in 1..(vmstat[:si].length-1)
+    f.write vmstat[:si][i] + ","
+    f.write vmstat[:so][i] + "\n"
+  end
+end
+
+################################################################################
 # Go through each .R script and execute to make the graphs
 ################################################################################
 
-#puts "#{`date`} - Running command_counters.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/command_counters.R #{File.expand_path("command_counters.csv", opt[:dest])} #{File.expand_path("command_counters.png", opt[:dest])}`
-#puts "#{`date`} - Running processlist_states.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/processlist_states.R #{File.expand_path("processlist_states.csv", opt[:dest])} #{File.expand_path("processlist_states.png", opt[:dest])}`
-#if MYSQL_VERSION_MAJOR == '5.5'
-#  puts "#{`date`} - Running handler55.R" if opt[:debug]
-#  `Rscript --no-save #{File.dirname(__FILE__)}/handlers55.R #{File.expand_path("handlers.csv", opt[:dest])} #{File.expand_path("handlers.png", opt[:dest])}`
-#elsif MYSQL_VERSION_MAJOR == '5.1'
-#  puts "#{`date`} - Running handler51.R" if opt[:debug]
-#  `Rscript --no-save #{File.dirname(__FILE__)}/handlers51.R #{File.expand_path("handlers.csv", opt[:dest])} #{File.expand_path("handlers.png", opt[:dest])}`
-#else
-#  puts "WTF?!?!"
-#end
-#
-#if INNODB_ADAPTIVE_HASH_SEARCHES
-#  puts "#{`date`} - Running innodb_adaptive_hash_searches.R" if opt[:debug]
-#  `Rscript --no-save #{File.dirname(__FILE__)}/innodb_adaptive_hash_searches.R #{File.expand_path("innodb_adaptive_hash_searches.csv", opt[:dest])} #{File.expand_path("innodb_adaptive_hash_searches.png", opt[:dest])}`
-#else
-#  puts "#{`date`}.chomp - Skipping InnoDB Adaptive Hash Searches ..." if opt[:debug]
-#end
-#
-#puts "#{`date`} - Running innodb_buffer_pool.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/innodb_buffer_pool.R #{File.expand_path("innodb_buffer_pool.csv", opt[:dest])} #{File.expand_path("innodb_buffer_pool.png", opt[:dest])}`
-#puts "#{`date`} - Running innodb_buffer_pool_activity.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/innodb_buffer_pool_activity.R #{File.expand_path("innodb_buffer_pool_activity.csv", opt[:dest])} #{File.expand_path("innodb_buffer_pool_activity.png", opt[:dest])}`
-#
-##puts "#{`date`} - Running innodb_checkpoint.R" if opt[:debug]
-##`Rscript --no-save #{File.dirname(__FILE__)}/innodb_checkpoint.R #{File.expand_path("innodb_checkpoint.csv", opt[:dest])} #{File.expand_path("innodb_checkpoint.png", opt[:dest])}`
-#
-#puts "#{`date`} - Running select_types.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/select_types.R #{File.expand_path("select_types.csv", opt[:dest])} #{File.expand_path("select_types.png", opt[:dest])}`
-#puts "#{`date`} - Running sorts.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/sorts.R #{File.expand_path("sorts.csv", opt[:dest])} #{File.expand_path("sorts.png", opt[:dest])}`
-#puts "#{`date`} - Running transaction_handlers.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/transaction_handlers.R #{File.expand_path("transaction_handlers.csv", opt[:dest])} #{File.expand_path("transaction_handlers.png", opt[:dest])}`
-#
-#if INNODB_IBUF
-#  puts "#{`date`} - Running innodb_insert_buffer.R" if opt[:debug]
-#  `Rscript --no-save #{File.dirname(__FILE__)}/innodb_insert_buffer.R #{File.expand_path("innodb_insert_buffer.csv", opt[:dest])} #{File.expand_path("innodb_insert_buffer.png", opt[:dest])}`
-#else
-#  puts "#{`date`} - Skipping InnoDB Insert Buffer ..." if opt[:debug]
-#end
-#
-#puts "#{`date`} - Running innodb_io.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/innodb_io.R #{File.expand_path("innodb_io.csv", opt[:dest])} #{File.expand_path("innodb_io.png", opt[:dest])}`
-#puts "#{`date`} - Running connections.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/connections.R #{File.expand_path("connections.csv", opt[:dest])} #{File.expand_path("connections.png", opt[:dest])}`
-#puts "#{`date`} - Running mysql_network_traffic.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/mysql_network_traffic.R #{File.expand_path("mysql_network_traffic.csv", opt[:dest])} #{File.expand_path("mysql_network_traffic.png", opt[:dest])}`
-#puts "#{`date`} - Running table_locks.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/table_locks.R #{File.expand_path("table_locks.csv", opt[:dest])} #{File.expand_path("table_locks.png", opt[:dest])}`
-#puts "#{`date`} - Running query_cache.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/query_cache.R #{File.expand_path("query_cache.csv", opt[:dest])} #{File.expand_path("query_cache.png", opt[:dest])}`
-puts "#{`date`} - Running query_cache_memory.R" if opt[:debug]
+puts "#{`date`.chomp} - Running command_counters.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/command_counters.R #{File.expand_path("command_counters.csv", opt[:dest])} #{File.expand_path("command_counters.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running processlist_states.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/processlist_states.R #{File.expand_path("processlist_states.csv", opt[:dest])} #{File.expand_path("processlist_states.png", opt[:dest])}`
+if mysql_version_major == '5.5'
+  puts "#{`date`.chomp} - Running handler55.R" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/handlers55.R #{File.expand_path("handlers.csv", opt[:dest])} #{File.expand_path("handlers.png", opt[:dest])}`
+elsif mysql_version_major == '5.1'
+  puts "#{`date`.chomp} - Running handler51.R" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/handlers51.R #{File.expand_path("handlers.csv", opt[:dest])} #{File.expand_path("handlers.png", opt[:dest])}`
+else
+  puts "WTF?!?!"
+end
+
+if innodb_adaptive_hash_searches
+  puts "#{`date`.chomp} - Running innodb_adaptive_hash_searches.R" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/innodb_adaptive_hash_searches.R #{File.expand_path("innodb_adaptive_hash_searches.csv", opt[:dest])} #{File.expand_path("innodb_adaptive_hash_searches.png", opt[:dest])}`
+else
+  puts "#{`date`.chomp}.chomp - Skipping InnoDB Adaptive Hash Searches ..." if opt[:debug]
+end
+
+puts "#{`date`.chomp} - Running innodb_buffer_pool.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/innodb_buffer_pool.R #{File.expand_path("innodb_buffer_pool.csv", opt[:dest])} #{File.expand_path("innodb_buffer_pool.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running innodb_buffer_pool_activity.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/innodb_buffer_pool_activity.R #{File.expand_path("innodb_buffer_pool_activity.csv", opt[:dest])} #{File.expand_path("innodb_buffer_pool_activity.png", opt[:dest])}`
+
+puts "#{`date`.chomp} - Running innodb_checkpoint.R" if opt[:debug]
+#`Rscript --no-save #{File.dirname(__FILE__)}/innodb_checkpoint.R #{File.expand_path("innodb_checkpoint.csv", opt[:dest])} #{File.expand_path("innodb_checkpoint.png", opt[:dest])}`
+
+puts "#{`date`.chomp} - Running select_types.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/select_types.R #{File.expand_path("select_types.csv", opt[:dest])} #{File.expand_path("select_types.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running sorts.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/sorts.R #{File.expand_path("sorts.csv", opt[:dest])} #{File.expand_path("sorts.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running transaction_handlers.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/transaction_handlers.R #{File.expand_path("transaction_handlers.csv", opt[:dest])} #{File.expand_path("transaction_handlers.png", opt[:dest])}`
+
+if innodb_ibuf
+  puts "#{`date`.chomp} - Running innodb_insert_buffer.R" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/innodb_insert_buffer.R #{File.expand_path("innodb_insert_buffer.csv", opt[:dest])} #{File.expand_path("innodb_insert_buffer.png", opt[:dest])}`
+else
+  puts "#{`date`.chomp} - Skipping InnoDB Insert Buffer ..." if opt[:debug]
+end
+
+puts "#{`date`.chomp} - Running innodb_io.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/innodb_io.R #{File.expand_path("innodb_io.csv", opt[:dest])} #{File.expand_path("innodb_io.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running connections.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/connections.R #{File.expand_path("connections.csv", opt[:dest])} #{File.expand_path("connections.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running mysql_network_traffic.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/mysql_network_traffic.R #{File.expand_path("mysql_network_traffic.csv", opt[:dest])} #{File.expand_path("mysql_network_traffic.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running table_locks.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/table_locks.R #{File.expand_path("table_locks.csv", opt[:dest])} #{File.expand_path("table_locks.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running query_cache.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/query_cache.R #{File.expand_path("query_cache.csv", opt[:dest])} #{File.expand_path("query_cache.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running query_cache_memory.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/query_cache_memory.R #{File.expand_path("query_cache_memory.csv", opt[:dest])} #{File.expand_path("query_cache_memory.png", opt[:dest])}`
-puts "#{`date`} - Running binlog_cache.R" if opt[:debug]
+puts "#{`date`.chomp} - Running binlog_cache.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/binlog_cache.R #{File.expand_path("binlog_cache.csv", opt[:dest])} #{File.expand_path("binlog_cache.png", opt[:dest])}`
+
+if table_definitions
+  puts "#{`date`.chomp} - Running table_definitions.R" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/table_definitions.R #{File.expand_path("table_definitions.csv", opt[:dest])} #{File.expand_path("table_definitions.png", opt[:dest])}`
+else
+  puts "#{`date`.chomp} - Skipping Table Definitions ..." if opt[:debug]
+end
+
+puts "#{`date`.chomp} - Running files_and_tables.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/files_and_tables.R #{File.expand_path("files_and_tables.csv", opt[:dest])} #{File.expand_path("files_and_tables.png", opt[:dest])}`
+
+puts "#{`date`.chomp} - Running myisam_key_cache.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/myisam_key_cache.R #{File.expand_path("myisam_key_cache.csv", opt[:dest])} #{File.expand_path("myisam_key_cache.png", opt[:dest])}`
+
+puts "#{`date`.chomp} - Running myisam_indexes.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/myisam_indexes.R #{File.expand_path("myisam_indexes.csv", opt[:dest])} #{File.expand_path("myisam_indexes.png", opt[:dest])}`
+
+puts "#{`date`.chomp} - Running temp_tables.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/temp_tables.R #{File.expand_path("temp_tables.csv", opt[:dest])} #{File.expand_path("temp_tables.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running overall_cpu_usage.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/overall_cpu_usage.R #{File.expand_path("overall_cpu_usage.csv", opt[:dest])} #{File.expand_path("overall_cpu_usage.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running per_cpu_non_idle.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/per_cpu_non_idle.R #{File.expand_path("per_cpu_non_idle.csv", opt[:dest])} #{File.expand_path("per_cpu_non_idle.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running linux_memory.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/linux_memory.R #{File.expand_path("linux_memory.csv", opt[:dest])} #{File.expand_path("linux_memory.png", opt[:dest])}`
+
+iostat.keys.each do |disk|
+  puts "#{`date`.chomp} - Running iostat_rw.R for #{disk}" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/iostat_rw.R #{disk} #{File.expand_path("iostat_rw_#{disk}.csv", opt[:dest])} #{File.expand_path("iostat_rw_#{disk}.png", opt[:dest])}`
+  puts "#{`date`.chomp} - Running iostat_time.R for #{disk}" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/iostat_time.R #{disk} #{File.expand_path("iostat_time_#{disk}.csv", opt[:dest])} #{File.expand_path("iostat_time_#{disk}.png", opt[:dest])}`
+end
+
+puts "#{`date`.chomp} - Running network_connection_states.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/network_connection_states.R #{File.expand_path("network_connection_states.csv", opt[:dest])} #{File.expand_path("network_connection_states.png", opt[:dest])}`
+
+puts "#{`date`.chomp} - Running swap.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/swap.R #{File.expand_path("swap.csv", opt[:dest])} #{File.expand_path("swap.png", opt[:dest])}`
 
 ################################################################################
 # Create an .html page with all the graphs
@@ -785,7 +1350,7 @@ File.open(File.expand_path("#{opt[:prefix]}.html", opt[:dest]), "w") do |f|
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/command_counters.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/handlers.png' />")
 
-  if INNODB_ADAPTIVE_HASH_SEARCHES
+  if innodb_adaptive_hash_searches
     f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_adaptive_hash_searches.png' />")
   end
 
@@ -796,7 +1361,7 @@ File.open(File.expand_path("#{opt[:prefix]}.html", opt[:dest]), "w") do |f|
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/sorts.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/transaction_handlers.png' />")
 
-  if INNODB_IBUF
+  if innodb_ibuf
     f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_insert_buffer.png' />")
   end
 
@@ -807,6 +1372,28 @@ File.open(File.expand_path("#{opt[:prefix]}.html", opt[:dest]), "w") do |f|
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/query_cache.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/query_cache_memory.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/binlog_cache.png' />")
+
+  if table_definitions
+    f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/table_definitions.png' />")
+  end
+
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/files_and_tables.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/myisam_key_cache.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/myisam_indexes.png' />")
+
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/temp_tables.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/overall_cpu_usage.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/per_cpu_non_idle.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/linux_memory.png' />")
+
+  iostat.keys.each do |disk|
+    f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/iostat_rw_#{disk}.png' />")
+    f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/iostat_time_#{disk}.png' />")
+  end
+
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/network_connection_states.png' />")
+
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/swap.png' />")
 
   f.write("</html>")
 end

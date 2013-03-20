@@ -22,43 +22,43 @@ for (i in 1:length(cs)) {
     command_counters_data<-rbind( command_counters_data,
                                   data.frame(Time=as.character(i),
                                              Command="Select",
-                                             Value=as.numeric(cs[i])))
+                                             Value=cs[i]))
     command_counters_data<-rbind( command_counters_data,
                                   data.frame(Time=as.character(i),
                                              Command="Delete",
-                                             Value=as.numeric(cd[i])))
+                                             Value=cd[i]))
     command_counters_data<-rbind( command_counters_data,
                                   data.frame(Time=as.character(i),
                                              Command="Insert",
-                                             Value=as.numeric(ci[i])))
+                                             Value=ci[i]))
     command_counters_data<-rbind( command_counters_data,
                                   data.frame(Time=as.character(i),
                                              Command="Update",
-                                             Value=as.numeric(cu[i])))
+                                             Value=cu[i]))
     command_counters_data<-rbind( command_counters_data,
                                   data.frame(Time=as.character(i),
                                              Command="Replace",
-                                             Value=as.numeric(cr[i])))
+                                             Value=cr[i]))
     command_counters_data<-rbind( command_counters_data,
                                   data.frame(Time=as.character(i),
                                              Command="Load",
-                                             Value=as.numeric(cl[i])))
+                                             Value=cl[i]))
     command_counters_data<-rbind( command_counters_data,
                                   data.frame(Time=as.character(i),
                                              Command="Delete Multi",
-                                             Value=as.numeric(cdm[i])))
+                                             Value=cdm[i]))
     command_counters_data<-rbind( command_counters_data,
                                   data.frame(Time=as.character(i),
                                              Command="Insert Select",
-                                             Value=as.numeric(cis[i])))
+                                             Value=cis[i]))
     command_counters_data<-rbind( command_counters_data,
                                   data.frame(Time=as.character(i),
                                              Command="Update Multi",
-                                             Value=as.numeric(cum[i])))
+                                             Value=cum[i]))
     command_counters_data<-rbind( command_counters_data,
                                   data.frame(Time=as.character(i),
                                              Command="Replace Select",
-                                             Value=as.numeric(crs[i])))
+                                             Value=crs[i]))
 }
 
 png(filename=args[length(args)],width=800)
