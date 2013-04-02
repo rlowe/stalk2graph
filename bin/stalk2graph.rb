@@ -380,7 +380,7 @@ end
 ################################################################################
 
 if opt[:debug]
-  puts "#{`date`.chomp} - Processing vmstat ..."
+  puts "#{`date`.chomp} - Processing diskstats ..."
 end
 
 diskstats_i = 0
@@ -1073,6 +1073,78 @@ File.open(File.expand_path("temp_tables.csv", opt[:dest]), "w") do |f|
 end
 
 ################################################################################
+# Generate the data for InnoDB Checkpoint Age
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for InnoDB Checkpoint Age ..."
+end
+
+if mysqladmin["Innodb_checkpoint_age"]
+  File.open(File.expand_path("innodb_checkpoint_age.csv", opt[:dest]), "w") do |f|
+    f.write "max_age,target_age,age\n"
+
+    for i in 1..(mysqladmin["Innodb_checkpoint_age"].length-1)
+      f.write mysqladmin["Innodb_checkpoint_max_age"][i] + ","
+      f.write mysqladmin["Innodb_checkpoint_target_age"][i] + ","
+      f.write mysqladmin["Innodb_checkpoint_age"][i] + "\n"
+    end
+  end
+end
+
+################################################################################
+# Generate the data for InnoDB Row Lock Waits
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for InnoDB Row Lock Waits ..."
+end
+
+File.open(File.expand_path("innodb_row_lock_waits.csv", opt[:dest]), "w") do |f|
+  f.write "waits\n"
+
+  for i in 1..(mysqladmin["Innodb_row_lock_waits"].length-1)
+    f.write mysqladmin["Innodb_row_lock_waits"][i] + "\n"
+  end
+end
+
+################################################################################
+# Generate the data for InnoDB Row Lock Time
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for InnoDB Row Lock Time ..."
+end
+
+File.open(File.expand_path("innodb_row_lock_time.csv", opt[:dest]), "w") do |f|
+  f.write "time\n"
+
+  for i in 1..(mysqladmin["Innodb_row_lock_time"].length-1)
+    f.write mysqladmin["Innodb_row_lock_time"][i] + "\n"
+  end
+end
+
+################################################################################
+# Generate the data for Thread Cache
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for Thread Cache ..."
+end
+
+File.open(File.expand_path("thread_cache.csv", opt[:dest]), "w") do |f|
+  f.write "cache_size,threads_created,threads_cached\n"
+
+  for i in 1..(mysqladmin["Threads_created"].length-1)
+    f.write variables["thread_cache_size"] + ","
+    f.write mysqladmin["Threads_created"][i] + ","
+    f.write mysqladmin["Threads_cached"][i] + "\n"
+  end
+end
+
+# END MYSQL
+
+################################################################################
 # Generate the data for Overall CPU Usage
 ################################################################################
 
@@ -1126,6 +1198,16 @@ File.open(File.expand_path("per_cpu_non_idle.csv", opt[:dest]), "w") do |f|
 end
 
 ################################################################################
+# Generate the data for Per-CPU Graphs
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv files for Per-CPU Graphs ..."
+end
+
+# RYAN
+
+################################################################################
 # Generate the data for Linux Memory
 ################################################################################
 
@@ -1153,7 +1235,8 @@ if opt[:debug]
 end
 
 iostat.keys.each do |disk|
-  File.open(File.expand_path("iostat_rw_#{disk}.csv", opt[:dest]), "w") do |f|
+  sanitized_disk = disk.gsub('/','-')
+  File.open(File.expand_path("iostat_rw_#{sanitized_disk}.csv", opt[:dest]), "w") do |f|
     f.write "r,w\n"
 
     for i in 1..(iostat[disk][:r].length-1)
@@ -1162,7 +1245,7 @@ iostat.keys.each do |disk|
     end
   end
 
-  File.open(File.expand_path("iostat_time_#{disk}.csv", opt[:dest]), "w") do |f|
+  File.open(File.expand_path("iostat_time_#{sanitized_disk}.csv", opt[:dest]), "w") do |f|
     f.write "queue,service\n"
 
     for i in 1..(iostat[disk][:svctm].length-1)
@@ -1271,9 +1354,6 @@ puts "#{`date`.chomp} - Running innodb_buffer_pool.R" if opt[:debug]
 puts "#{`date`.chomp} - Running innodb_buffer_pool_activity.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/innodb_buffer_pool_activity.R #{File.expand_path("innodb_buffer_pool_activity.csv", opt[:dest])} #{File.expand_path("innodb_buffer_pool_activity.png", opt[:dest])}`
 
-puts "#{`date`.chomp} - Running innodb_checkpoint.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/innodb_checkpoint.R #{File.expand_path("innodb_checkpoint.csv", opt[:dest])} #{File.expand_path("innodb_checkpoint.png", opt[:dest])}`
-
 puts "#{`date`.chomp} - Running select_types.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/select_types.R #{File.expand_path("select_types.csv", opt[:dest])} #{File.expand_path("select_types.png", opt[:dest])}`
 puts "#{`date`.chomp} - Running sorts.R" if opt[:debug]
@@ -1321,6 +1401,21 @@ puts "#{`date`.chomp} - Running myisam_indexes.R" if opt[:debug]
 
 puts "#{`date`.chomp} - Running temp_tables.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/temp_tables.R #{File.expand_path("temp_tables.csv", opt[:dest])} #{File.expand_path("temp_tables.png", opt[:dest])}`
+
+if mysqladmin["Innodb_checkpoint_age"]
+  puts "#{`date`.chomp} - Running innodb_checkpoint_age.R" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/innodb_checkpoint_age.R #{File.expand_path("innodb_checkpoint_age.csv", opt[:dest])} #{File.expand_path("innodb_checkpoint_age.png", opt[:dest])}`
+end
+
+puts "#{`date`.chomp} - Running innodb_row_lock_waits.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/innodb_row_lock_waits.R #{File.expand_path("innodb_row_lock_waits.csv", opt[:dest])} #{File.expand_path("innodb_row_lock_waits.png", opt[:dest])}`
+
+puts "#{`date`.chomp} - Running innodb_row_lock_time.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/innodb_row_lock_time.R #{File.expand_path("innodb_row_lock_time.csv", opt[:dest])} #{File.expand_path("innodb_row_lock_time.png", opt[:dest])}`
+
+puts "#{`date`.chomp} - Running thread_cache.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/thread_cache.R #{File.expand_path("thread_cache.csv", opt[:dest])} #{File.expand_path("thread_cache.png", opt[:dest])}`
+
 puts "#{`date`.chomp} - Running overall_cpu_usage.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/overall_cpu_usage.R #{File.expand_path("overall_cpu_usage.csv", opt[:dest])} #{File.expand_path("overall_cpu_usage.png", opt[:dest])}`
 puts "#{`date`.chomp} - Running per_cpu_non_idle.R" if opt[:debug]
@@ -1329,10 +1424,11 @@ puts "#{`date`.chomp} - Running linux_memory.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/linux_memory.R #{File.expand_path("linux_memory.csv", opt[:dest])} #{File.expand_path("linux_memory.png", opt[:dest])}`
 
 iostat.keys.each do |disk|
-  puts "#{`date`.chomp} - Running iostat_rw.R for #{disk}" if opt[:debug]
-  `Rscript --no-save #{File.dirname(__FILE__)}/iostat_rw.R #{disk} #{File.expand_path("iostat_rw_#{disk}.csv", opt[:dest])} #{File.expand_path("iostat_rw_#{disk}.png", opt[:dest])}`
-  puts "#{`date`.chomp} - Running iostat_time.R for #{disk}" if opt[:debug]
-  `Rscript --no-save #{File.dirname(__FILE__)}/iostat_time.R #{disk} #{File.expand_path("iostat_time_#{disk}.csv", opt[:dest])} #{File.expand_path("iostat_time_#{disk}.png", opt[:dest])}`
+  sanitized_disk = disk.gsub('/','-')
+  puts "#{`date`.chomp} - Running iostat_rw.R for #{sanitized_disk}" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/iostat_rw.R #{sanitized_disk} #{File.expand_path("iostat_rw_#{sanitized_disk}.csv", opt[:dest])} #{File.expand_path("iostat_rw_#{sanitized_disk}.png", opt[:dest])}`
+  puts "#{`date`.chomp} - Running iostat_time.R for #{sanitized_disk}" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/iostat_time.R #{sanitized_disk} #{File.expand_path("iostat_time_#{sanitized_disk}.csv", opt[:dest])} #{File.expand_path("iostat_time_#{sanitized_disk}.png", opt[:dest])}`
 end
 
 puts "#{`date`.chomp} - Running network_connection_states.R" if opt[:debug]
@@ -1356,8 +1452,8 @@ File.open(File.expand_path("#{opt[:prefix]}.html", opt[:dest]), "w") do |f|
 
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_buffer_pool.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_buffer_pool_activity.png' />")
-  #f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_checkpoint.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/select_types.png' />")
+
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/sorts.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/transaction_handlers.png' />")
 
@@ -1382,13 +1478,24 @@ File.open(File.expand_path("#{opt[:prefix]}.html", opt[:dest]), "w") do |f|
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/myisam_indexes.png' />")
 
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/temp_tables.png' />")
+
+  if mysqladmin["Innodb_checkpoint_age"]
+    f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_checkpoint_age.png' />")
+  end
+
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_row_lock_waits.png' />")
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/innodb_row_lock_time.png' />")
+
+  f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/thread_cache.png' />")
+
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/overall_cpu_usage.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/per_cpu_non_idle.png' />")
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/linux_memory.png' />")
 
   iostat.keys.each do |disk|
-    f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/iostat_rw_#{disk}.png' />")
-    f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/iostat_time_#{disk}.png' />")
+    sanitized_disk = disk.gsub('/','-')
+    f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/iostat_rw_#{sanitized_disk}.png' />")
+    f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/iostat_time_#{sanitized_disk}.png' />")
   end
 
   f.write("<br /><img src='/audit_uploads/#{opt[:prefix]}/network_connection_states.png' />")
