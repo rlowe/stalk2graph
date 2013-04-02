@@ -45,3 +45,10 @@ NOTES
 =====
 
 * https://gist.github.com/rlowe/01d628a034156bcca62d
+
+INSTALLATION INSTRUCTIONS
+=========================
+
+1) Install and Configure R, Ruby, mod_ruby, and apache2
+2) Check out the repository into the target repository (usually
+http://<blah>/stalk2graph/
