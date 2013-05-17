@@ -52,3 +52,11 @@ INSTALLATION INSTRUCTIONS
 1) Install and Configure R, Ruby, mod_ruby, and apache2
 2) Check out the repository into the target repository (usually
 http://<blah>/stalk2graph/
+
+gem install passenger
+aptitude install curl-ssl openssl zlib-devel
+apt-get install libcurl libcurl-ssl-dev libcurl-dev
+apt-get install libcurl4 libcurlp-openssl-dev
+apt-get install libcurl3 libcurl3-openssl-dev
+apt-get install libapr1 libapr1-dev
+apt-get install apache2-prefork-dev libapr1-dev libaprutil1-dev
