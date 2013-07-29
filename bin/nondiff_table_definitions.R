@@ -1,0 +1,11 @@
+args<-commandArgs(trailingOnly = FALSE)
+i<-read.csv(args[length(args)-1])
+
+png(filename=args[length(args)], width=800)
+options(scipen=20)
+plot(NULL,xlim=c(0,length(i$opened_table_defs)),ylim=c(0,ymax=max(i$definition_cache)*1.25),xaxs="i", yaxs="i", ylab="", xlab="", main="Table Definitions",las=1,xaxt="n", type="h")
+rect(0,0,length(i$definition_cache),max(i$definition_cache),col="lightgray")
+lines(i$open_table_defs, col="blue")
+lines((i$opened_table_defs), col="red")
+legend("top", ncol=2, legend=c("Table Definition Cache Size", "Open Table Definitions", "Opened Table Definitions"), col=c("lightgray","blue","red"), lty=1,lwd=2, bty="n")
+dev.off()

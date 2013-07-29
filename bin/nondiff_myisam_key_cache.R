@@ -1,0 +1,11 @@
+args<-commandArgs(trailingOnly = FALSE)
+i<-read.csv(args[length(args)-1])
+
+png(filename=args[length(args)], width=800)
+options(scipen=20)
+plot(NULL,xlim=c(0,length(i$key_buffer_size)),ylim=c(0,ymax=max(i$key_buffer_size)*1.25),xaxs="i", yaxs="i", ylab="", xlab="", main="MyISAM Key Cache",las=1,xaxt="n", type="h")
+rect(0,0,length(i$key_buffer_size),max(i$key_buffer_size),col="lightgray")
+lines(i$blocks_used, col="blue")
+lines((i$blocks_not_flushed), col="red")
+legend("top", ncol=2, legend=c("Key Buffer Size", "Blocks Used", "Blocks Not Flushed"), col=c("lightgray","blue","red"), lty=1,lwd=2, bty="n")
+dev.off()

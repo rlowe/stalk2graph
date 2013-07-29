@@ -40,13 +40,14 @@ end
 opt             = Hash.new
 opt[:debug]     = false
 opt[:dest]      = File.expand_path(".")
-opt[:file]      = nil
+opt[:mext]      = nil
 
 opts = GetoptLong.new(
   [ '--debug',           GetoptLong::NO_ARGUMENT       ],
   [ '--dest',            GetoptLong::OPTIONAL_ARGUMENT ],
-  [ '--file',      '-f', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--mext',      '-m', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--help',      '-h', GetoptLong::NO_ARGUMENT       ],
+  [ '--gv',              GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--version',   '-v', GetoptLong::NO_ARGUMENT       ]
 )
 
@@ -61,8 +62,10 @@ opts.each do |o, arg|
         puts "#{arg} is not a valid directory"
         usage
       end
-    when '--file'
-      opt[:file] = arg
+    when '--mext'
+      opt[:mext] = arg
+    when '--gv'
+      opt[:gv] = arg
     when '--help'
       usage
     when '--version'
@@ -71,14 +74,21 @@ opts.each do |o, arg|
   end
 end
 
-if !File.exist?(opt[:file])
-  puts "#{opt[:file]} is not a valid directory"
+if !File.exist?(opt[:mext])
+  puts "#{opt[:mext]} is not a valid directory"
   usage
 end
 
-opt[:file] = File.expand_path(opt[:file])
+if opt[:gv] && !File.exist?(opt[:gv])
+  puts "#{opt[:gv]} is not a valid directory"
+  usage
+end
+
+opt[:mext] = File.expand_path(opt[:mext])
+opt[:gv] = File.expand_path(opt[:gv])
 
 mysqladmin     = {}
+variables      = {}
 
 ################################################################################
 # Output from SHOW GLOBAL STATUS
@@ -88,7 +98,7 @@ if opt[:debug]
   puts "#{`date`.chomp} - Processing pt-mext ..."
 end
 
-mext_file = File.open(opt[:file]).read
+mext_file = File.open(opt[:mext]).read
 mext_file.each_line do |line|
   a = line.split()
   mysqladmin[a[0]] = []
@@ -99,11 +109,28 @@ mext_file.each_line do |line|
 end
 
 ################################################################################
+# Output from SHOW GLOBAL VARIABLES
+################################################################################
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Processing SHOW GLOBAL VARIABLES output ..."
+end
+
+gv_file = File.open(opt[:gv]).read
+gv_file.each_line do |line|
+  a = line.split()
+
+  if a[0] != 'Variable_name'
+    variables[a[0]] = a[1]
+  end
+end
+
+################################################################################
 # We have to behave differently based on versions :-(
 ################################################################################
 
-#mysql_version_full=variables['version'].match(/\d+\.\d+\.\d+/).to_s
-#mysql_version_major=variables['version'].match(/\d+\.\d+/).to_s
+mysql_version_full=variables['version'].match(/\d+\.\d+\.\d+/).to_s
+mysql_version_major=variables['version'].match(/\d+\.\d+/).to_s
 
 ################################################################################
 # Generate the data for the MySQL Command Counters Graph
@@ -138,33 +165,33 @@ end
 ################################################################################
 # Generate the data for the MySQL Handlers Graph
 ################################################################################
-#
-#if opt[:debug]
-#  puts "#{`date`.chomp} - Generating .csv file for MySQL Handlers ..."
-#end
-#
-#File.open(File.expand_path("handlers.csv", opt[:dest]), "w") do |f|
-#  f.write "write,update,delete,read_first,read_key,"
-#  if mysql_version_major == '5.5'
-#    f.write "read_last,"
-#  end
-#  f.write "read_next,read_prev,read_rnd,read_rnd_next\n"
-#
-#  for i in 1..(mysqladmin["Handler_write"].length-2)
-#    f.write mysqladmin["Handler_write"][i] + ","
-#    f.write mysqladmin["Handler_update"][i] + ","
-#    f.write mysqladmin["Handler_delete"][i] + ","
-#    f.write mysqladmin["Handler_read_first"][i] + ","
-#    f.write mysqladmin["Handler_read_key"][i] + ","
-#    if mysql_version_major == '5.5'
-#      f.write mysqladmin["Handler_read_last"][i] + ","
-#    end
-#    f.write mysqladmin["Handler_read_next"][i] + ","
-#    f.write mysqladmin["Handler_read_prev"][i] + ","
-#    f.write mysqladmin["Handler_read_rnd"][i] + ","
-#    f.write mysqladmin["Handler_read_rnd_next"][i] + "\n"
-#  end
-#end
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Handlers ..."
+end
+
+File.open(File.expand_path("handlers.csv", opt[:dest]), "w") do |f|
+  f.write "write,update,delete,read_first,read_key,"
+  if mysql_version_major == '5.5'
+    f.write "read_last,"
+  end
+  f.write "read_next,read_prev,read_rnd,read_rnd_next\n"
+
+  for i in 1..(mysqladmin["Handler_write"].length-2)
+    f.write mysqladmin["Handler_write"][i] + ","
+    f.write mysqladmin["Handler_update"][i] + ","
+    f.write mysqladmin["Handler_delete"][i] + ","
+    f.write mysqladmin["Handler_read_first"][i] + ","
+    f.write mysqladmin["Handler_read_key"][i] + ","
+    if mysql_version_major == '5.5'
+      f.write mysqladmin["Handler_read_last"][i] + ","
+    end
+    f.write mysqladmin["Handler_read_next"][i] + ","
+    f.write mysqladmin["Handler_read_prev"][i] + ","
+    f.write mysqladmin["Handler_read_rnd"][i] + ","
+    f.write mysqladmin["Handler_read_rnd_next"][i] + "\n"
+  end
+end
 
 ################################################################################
 # Generate the data for the MySQL Select Types Graph
@@ -369,28 +396,28 @@ end
 ################################################################################
 # Generate the data for Connections
 ################################################################################
-#
-#if opt[:debug]
-#  puts "#{`date`.chomp} - Generating .csv file for MySQL Connections ..."
-#end
-#
-#File.open(File.expand_path("connections.csv", opt[:dest]), "w") do |f|
-#  f.write "max_connections,max_used_connections,aborted_clients,aborted_connects,threads_connected\n"
-#
-#  begin
-#    for i in 1..(mysqladmin["Max_used_connections"].length-2)
-#      f.write variables["max_connections"] + ","
-#      f.write mysqladmin["Max_used_connections"][i] + ","
-#      f.write mysqladmin["Aborted_clients"][i] + ","
-#      f.write mysqladmin["Aborted_connects"][i] + ","
-#      f.write mysqladmin["Threads_connected"][i] + "\n"
-#    end
-#  rescue
-#    # We have this because sometimes Com_select has more records than Com_load
-#    # So this just stops the for loop at the minimum without having to check each 
-#    # array for length
-#  end
-#end
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Connections ..."
+end
+
+File.open(File.expand_path("connections.csv", opt[:dest]), "w") do |f|
+  f.write "max_connections,max_used_connections,aborted_clients,aborted_connects,threads_connected\n"
+
+  begin
+    for i in 1..(mysqladmin["Max_used_connections"].length-2)
+      f.write variables["max_connections"] + ","
+      f.write mysqladmin["Max_used_connections"][i] + ","
+      f.write mysqladmin["Aborted_clients"][i] + ","
+      f.write mysqladmin["Aborted_connects"][i] + ","
+      f.write mysqladmin["Threads_connected"][i] + "\n"
+    end
+  rescue
+    # We have this because sometimes Com_select has more records than Com_load
+    # So this just stops the for loop at the minimum without having to check each 
+    # array for length
+  end
+end
 
 ################################################################################
 # Generate the data for MySQL network traffic
@@ -461,110 +488,110 @@ end
 ################################################################################
 # Generate the data for Query Cache Memory
 ################################################################################
-#
-#if opt[:debug]
-#  puts "#{`date`.chomp} - Generating .csv file for MySQL Query Cache Memory ..."
-#end
-#
-#File.open(File.expand_path("query_cache_memory.csv", opt[:dest]), "w") do |f|
-#  f.write "cache_size,free_blocks,free_memory,total_blocks\n"
-#
-#  for i in 1..(mysqladmin["Qcache_free_blocks"].length-2)
-#    f.write variables["query_cache_size"] + ","
-#    f.write mysqladmin["Qcache_free_blocks"][i] + ","
-#    f.write mysqladmin["Qcache_free_memory"][i] + ","
-#    f.write mysqladmin["Qcache_total_blocks"][i] + "\n"
-#  end
-#
-#end
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for MySQL Query Cache Memory ..."
+end
+
+File.open(File.expand_path("query_cache_memory.csv", opt[:dest]), "w") do |f|
+  f.write "cache_size,free_blocks,free_memory,total_blocks\n"
+
+  for i in 1..(mysqladmin["Qcache_free_blocks"].length-2)
+    f.write variables["query_cache_size"] + ","
+    f.write mysqladmin["Qcache_free_blocks"][i] + ","
+    f.write mysqladmin["Qcache_free_memory"][i] + ","
+    f.write mysqladmin["Qcache_total_blocks"][i] + "\n"
+  end
+
+end
 
 ################################################################################
 # Generate the data for Binary Log Cache
 ################################################################################
-#
-#if opt[:debug]
-#  puts "#{`date`.chomp} - Generating .csv file for Binary Log Cache ..."
-#end
-#
-#File.open(File.expand_path("binlog_cache.csv", opt[:dest]), "w") do |f|
-#  f.write "cache_size,cache_use,cache_disk_use\n"
-#
-#  for i in 1..(mysqladmin["Binlog_cache_use"].length-2)
-#    f.write variables["binlog_cache_size"] + ","
-#    f.write mysqladmin["Binlog_cache_use"][i] + ","
-#    f.write mysqladmin["Binlog_cache_disk_use"][i] + "\n"
-#  end
-#
-#end
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for Binary Log Cache ..."
+end
+
+File.open(File.expand_path("binlog_cache.csv", opt[:dest]), "w") do |f|
+  f.write "cache_size,cache_use,cache_disk_use\n"
+
+  for i in 1..(mysqladmin["Binlog_cache_use"].length-2)
+    f.write variables["binlog_cache_size"] + ","
+    f.write mysqladmin["Binlog_cache_use"][i] + ","
+    f.write mysqladmin["Binlog_cache_disk_use"][i] + "\n"
+  end
+
+end
 
 ################################################################################
 # Generate the data for Table Definitions
 ################################################################################
-#
-#if opt[:debug]
-#  puts "#{`date`.chomp} - Generating .csv file for Table Definitions ..."
-#end
-#
-#table_definitions = true
-#
-#if mysqladmin["Opened_table_definitions"]
-#  File.open(File.expand_path("table_definitions.csv", opt[:dest]), "w") do |f|
-#    f.write "definition_cache,open_table_defs,opened_table_defs\n"
-#
-#    for i in 1..(mysqladmin["Opened_table_definitions"].length-2)
-#      f.write variables["table_definition_cache"] + ","
-#      f.write mysqladmin["Open_table_definitions"][i] + ","
-#      f.write mysqladmin["Opened_table_definitions"][i] + "\n"
-#    end
-#  end
-#else
-#  table_definitions = false
-#end
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for Table Definitions ..."
+end
+
+table_definitions = true
+
+if mysqladmin["Opened_table_definitions"]
+  File.open(File.expand_path("table_definitions.csv", opt[:dest]), "w") do |f|
+    f.write "definition_cache,open_table_defs,opened_table_defs\n"
+
+    for i in 1..(mysqladmin["Opened_table_definitions"].length-2)
+      f.write variables["table_definition_cache"] + ","
+      f.write mysqladmin["Open_table_definitions"][i] + ","
+      f.write mysqladmin["Opened_table_definitions"][i] + "\n"
+    end
+  end
+else
+  table_definitions = false
+end
 
 ################################################################################
 # Generate the data for Files and Tables
 ################################################################################
-#
-#if opt[:debug]
-#  puts "#{`date`.chomp} - Generating .csv file for Files and Tables ..."
-#end
-#
-#tc = "table_open_cache"
-#
-#if mysql_version_major == '5.0'
-#  tc = "table_cache"
-#end
-#
-#File.open(File.expand_path("files_and_tables.csv", opt[:dest]), "w") do |f|
-#  f.write "table_cache,open_tables,open_files,opened_tables\n"
-#
-#  for i in 1..(mysqladmin["Opened_tables"].length-2)
-#    f.write variables[tc] + ","
-#    f.write mysqladmin["Open_tables"][i] + ","
-#    f.write mysqladmin["Open_files"][i] + ","
-#    f.write mysqladmin["Opened_tables"][i] + "\n"
-#  end
-#
-#end
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for Files and Tables ..."
+end
+
+tc = "table_open_cache"
+
+if mysql_version_major == '5.0'
+  tc = "table_cache"
+end
+
+File.open(File.expand_path("files_and_tables.csv", opt[:dest]), "w") do |f|
+  f.write "table_cache,open_tables,open_files,opened_tables\n"
+
+  for i in 1..(mysqladmin["Opened_tables"].length-2)
+    f.write variables[tc] + ","
+    f.write mysqladmin["Open_tables"][i] + ","
+    f.write mysqladmin["Open_files"][i] + ","
+    f.write mysqladmin["Opened_tables"][i] + "\n"
+  end
+
+end
 
 ################################################################################
 # Generate the data for MyISAM Key Cache
 ################################################################################
-#
-#if opt[:debug]
-#  puts "#{`date`.chomp} - Generating .csv file for MyISAM Key Cache ..."
-#end
-#
-#File.open(File.expand_path("myisam_key_cache.csv", opt[:dest]), "w") do |f|
-#  f.write "key_buffer_size,blocks_used,blocks_not_flushed\n"
-#
-#  for i in 1..(mysqladmin["Key_blocks_not_flushed"].length-2)
-#    f.write variables["key_buffer_size"] + ","
-#    f.write mysqladmin["Key_blocks_used"][i] + ","
-#    f.write mysqladmin["Key_blocks_not_flushed"][i] + "\n"
-#  end
-#
-#end
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for MyISAM Key Cache ..."
+end
+
+File.open(File.expand_path("myisam_key_cache.csv", opt[:dest]), "w") do |f|
+  f.write "key_buffer_size,blocks_used,blocks_not_flushed\n"
+
+  for i in 1..(mysqladmin["Key_blocks_not_flushed"].length-2)
+    f.write variables["key_buffer_size"] + ","
+    f.write mysqladmin["Key_blocks_used"][i] + ","
+    f.write mysqladmin["Key_blocks_not_flushed"][i] + "\n"
+  end
+
+end
 
 ################################################################################
 # Generate the data for MyISAM Indexes
@@ -659,20 +686,20 @@ end
 ################################################################################
 # Generate the data for Thread Cache
 ################################################################################
-#
-#if opt[:debug]
-#  puts "#{`date`.chomp} - Generating .csv file for Thread Cache ..."
-#end
-#
-#File.open(File.expand_path("thread_cache.csv", opt[:dest]), "w") do |f|
-#  f.write "cache_size,threads_created,threads_cached\n"
-#
-#  for i in 1..(mysqladmin["Threads_created"].length-2)
-#    f.write variables["thread_cache_size"] + ","
-#    f.write mysqladmin["Threads_created"][i] + ","
-#    f.write mysqladmin["Threads_cached"][i] + "\n"
-#  end
-#end
+
+if opt[:debug]
+  puts "#{`date`.chomp} - Generating .csv file for Thread Cache ..."
+end
+
+File.open(File.expand_path("thread_cache.csv", opt[:dest]), "w") do |f|
+  f.write "cache_size,threads_created,threads_cached\n"
+
+  for i in 1..(mysqladmin["Threads_created"].length-2)
+    f.write variables["thread_cache_size"] + ","
+    f.write mysqladmin["Threads_created"][i] + ","
+    f.write mysqladmin["Threads_cached"][i] + "\n"
+  end
+end
 
 ################################################################################
 # Go through each .R script and execute to make the graphs
@@ -680,15 +707,15 @@ end
 
 puts "#{`date`.chomp} - Running nondiff_command_counters.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/nondiff_command_counters.R #{File.expand_path("command_counters.csv", opt[:dest])} #{File.expand_path("command_counters.png", opt[:dest])}`
-#if mysql_version_major == '5.5'
-#  puts "#{`date`.chomp} - Running handler55.R" if opt[:debug]
-#  `Rscript --no-save #{File.dirname(__FILE__)}/handlers55.R #{File.expand_path("handlers.csv", opt[:dest])} #{File.expand_path("handlers.png", opt[:dest])}`
-#elsif mysql_version_major == '5.1'
-#  puts "#{`date`.chomp} - Running handler51.R" if opt[:debug]
-#  `Rscript --no-save #{File.dirname(__FILE__)}/handlers51.R #{File.expand_path("handlers.csv", opt[:dest])} #{File.expand_path("handlers.png", opt[:dest])}`
-#else
-#  puts "WTF?!?!"
-#end
+if mysql_version_major == '5.5'
+  puts "#{`date`.chomp} - Running nondiff_handler55.R" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/nondiff_handlers55.R #{File.expand_path("handlers.csv", opt[:dest])} #{File.expand_path("handlers.png", opt[:dest])}`
+elsif mysql_version_major == '5.1'
+  puts "#{`date`.chomp} - Running nondiff_handler51.R" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/nondiff_handlers51.R #{File.expand_path("handlers.csv", opt[:dest])} #{File.expand_path("handlers.png", opt[:dest])}`
+else
+  puts "WTF?!?!"
+end
 
 if innodb_adaptive_hash_searches
   puts "#{`date`.chomp} - Running nondiff_innodb_adaptive_hash_searches.R" if opt[:debug]
@@ -718,31 +745,31 @@ end
 
 puts "#{`date`.chomp} - Running nondiff_innodb_io.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/nondiff_innodb_io.R #{File.expand_path("innodb_io.csv", opt[:dest])} #{File.expand_path("innodb_io.png", opt[:dest])}`
-#puts "#{`date`.chomp} - Running connections.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/connections.R #{File.expand_path("connections.csv", opt[:dest])} #{File.expand_path("connections.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running nondiff_connections.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/nondiff_connections.R #{File.expand_path("connections.csv", opt[:dest])} #{File.expand_path("connections.png", opt[:dest])}`
 puts "#{`date`.chomp} - Running nondiff_mysql_network_traffic.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/nondiff_mysql_network_traffic.R #{File.expand_path("mysql_network_traffic.csv", opt[:dest])} #{File.expand_path("mysql_network_traffic.png", opt[:dest])}`
 puts "#{`date`.chomp} - Running nondiff_table_locks.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/nondiff_table_locks.R #{File.expand_path("table_locks.csv", opt[:dest])} #{File.expand_path("table_locks.png", opt[:dest])}`
 puts "#{`date`.chomp} - Running nondiff_query_cache.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/nondiff_query_cache.R #{File.expand_path("query_cache.csv", opt[:dest])} #{File.expand_path("query_cache.png", opt[:dest])}`
-#puts "#{`date`.chomp} - Running query_cache_memory.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/query_cache_memory.R #{File.expand_path("query_cache_memory.csv", opt[:dest])} #{File.expand_path("query_cache_memory.png", opt[:dest])}`
-#puts "#{`date`.chomp} - Running binlog_cache.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/binlog_cache.R #{File.expand_path("binlog_cache.csv", opt[:dest])} #{File.expand_path("binlog_cache.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running query_cache_memory.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/query_cache_memory.R #{File.expand_path("query_cache_memory.csv", opt[:dest])} #{File.expand_path("query_cache_memory.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running nondiff_binlog_cache.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/nondiff_binlog_cache.R #{File.expand_path("binlog_cache.csv", opt[:dest])} #{File.expand_path("binlog_cache.png", opt[:dest])}`
 
-#if table_definitions
-#  puts "#{`date`.chomp} - Running table_definitions.R" if opt[:debug]
-#  `Rscript --no-save #{File.dirname(__FILE__)}/table_definitions.R #{File.expand_path("table_definitions.csv", opt[:dest])} #{File.expand_path("table_definitions.png", opt[:dest])}`
-#else
-#  puts "#{`date`.chomp} - Skipping Table Definitions ..." if opt[:debug]
-#end
+if table_definitions
+  puts "#{`date`.chomp} - Running nondiff_table_definitions.R" if opt[:debug]
+  `Rscript --no-save #{File.dirname(__FILE__)}/nondiff_table_definitions.R #{File.expand_path("table_definitions.csv", opt[:dest])} #{File.expand_path("table_definitions.png", opt[:dest])}`
+else
+  puts "#{`date`.chomp} - Skipping Table Definitions ..." if opt[:debug]
+end
 
-#puts "#{`date`.chomp} - Running files_and_tables.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/files_and_tables.R #{File.expand_path("files_and_tables.csv", opt[:dest])} #{File.expand_path("files_and_tables.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running nondiff_files_and_tables.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/nondiff_files_and_tables.R #{File.expand_path("files_and_tables.csv", opt[:dest])} #{File.expand_path("files_and_tables.png", opt[:dest])}`
 
-#puts "#{`date`.chomp} - Running myisam_key_cache.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/myisam_key_cache.R #{File.expand_path("myisam_key_cache.csv", opt[:dest])} #{File.expand_path("myisam_key_cache.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running nondiff_myisam_key_cache.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/nondiff_myisam_key_cache.R #{File.expand_path("myisam_key_cache.csv", opt[:dest])} #{File.expand_path("myisam_key_cache.png", opt[:dest])}`
 
 puts "#{`date`.chomp} - Running nondiff_myisam_indexes.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/nondiff_myisam_indexes.R #{File.expand_path("myisam_indexes.csv", opt[:dest])} #{File.expand_path("myisam_indexes.png", opt[:dest])}`
@@ -761,13 +788,13 @@ puts "#{`date`.chomp} - Running nondiff_innodb_row_lock_waits.R" if opt[:debug]
 puts "#{`date`.chomp} - Running nondiff_innodb_row_lock_time.R" if opt[:debug]
 `Rscript --no-save #{File.dirname(__FILE__)}/nondiff_innodb_row_lock_time.R #{File.expand_path("innodb_row_lock_time.csv", opt[:dest])} #{File.expand_path("innodb_row_lock_time.png", opt[:dest])}`
 
-#puts "#{`date`.chomp} - Running thread_cache.R" if opt[:debug]
-#`Rscript --no-save #{File.dirname(__FILE__)}/thread_cache.R #{File.expand_path("thread_cache.csv", opt[:dest])} #{File.expand_path("thread_cache.png", opt[:dest])}`
+puts "#{`date`.chomp} - Running nondiff_thread_cache.R" if opt[:debug]
+`Rscript --no-save #{File.dirname(__FILE__)}/nondiff_thread_cache.R #{File.expand_path("thread_cache.csv", opt[:dest])} #{File.expand_path("thread_cache.png", opt[:dest])}`
 
 ################################################################################
 # Create an .html page with all the graphs
 ################################################################################
-File.open(File.expand_path("sesame.html", opt[:dest]), "w") do |f|
+File.open(File.expand_path("mext_gv.html", opt[:dest]), "w") do |f|
   f.write("<html><head></head><body>")
 
   f.write("<br /><img src='command_counters.png' />")
@@ -789,19 +816,19 @@ File.open(File.expand_path("sesame.html", opt[:dest]), "w") do |f|
   end
 
   f.write("<br /><img src='innodb_io.png' />")
-  #f.write("<br /><img src='connections.png' />")
+  f.write("<br /><img src='connections.png' />")
   f.write("<br /><img src='mysql_network_traffic.png' />")
   f.write("<br /><img src='table_locks.png' />")
   f.write("<br /><img src='query_cache.png' />")
-  #f.write("<br /><img src='query_cache_memory.png' />")
+  f.write("<br /><img src='query_cache_memory.png' />")
   f.write("<br /><img src='binlog_cache.png' />")
 
-#  if table_definitions
-#    f.write("<br /><img src='table_definitions.png' />")
-#  end
+  if table_definitions
+    f.write("<br /><img src='table_definitions.png' />")
+  end
 
-  #f.write("<br /><img src='files_and_tables.png' />")
-  #f.write("<br /><img src='myisam_key_cache.png' />")
+  f.write("<br /><img src='files_and_tables.png' />")
+  f.write("<br /><img src='myisam_key_cache.png' />")
   f.write("<br /><img src='myisam_indexes.png' />")
 
   f.write("<br /><img src='temp_tables.png' />")
@@ -813,7 +840,7 @@ File.open(File.expand_path("sesame.html", opt[:dest]), "w") do |f|
   f.write("<br /><img src='innodb_row_lock_waits.png' />")
   f.write("<br /><img src='innodb_row_lock_time.png' />")
 
-  #f.write("<br /><img src='thread_cache.png' />")
+  f.write("<br /><img src='thread_cache.png' />")
 
   f.write("</html>")
 end

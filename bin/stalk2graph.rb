@@ -353,7 +353,7 @@ end
 
 vmstat_file = File.open(File.join(opt[:dir], "#{opt[:prefix]}-vmstat")).read
 vmstat_file.each_line do |line|
-  a = line.split(/\s+/)
+  a = line.split()
   if a[0] != 'procs' && a[0] != 'r' && a[1] != 'r'
     vmstat[:r] << a[0]
     vmstat[:b] << a[1]
