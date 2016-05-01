@@ -444,7 +444,7 @@ processlist_states = [
   'Checking table',
   'cleaning up',
   'closing tables',
-  'conevrting HEAP to MyISAM',
+  'converting HEAP to MyISAM',
   'copy to tmp table',
   'Copying to group table',
   'Copying to tmp table',
